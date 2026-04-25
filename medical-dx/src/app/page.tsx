@@ -1,26 +1,37 @@
-"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
   const handleSignIn = () => {
-    document.cookie = "user=1;path=/";
-    window.location.href = "/dashboard";
+    setLoading(true);
+    // Simulate sign in - in production this would call StackAuth
+    setTimeout(() => {
+      router.push('/dashboard');
+    }, 500);
   };
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black min-h-screen">
+    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans min-h-screen">
       <main className="flex flex-col items-center gap-8 py-16 px-8 max-w-lg w-full">
-        <h1 className="text-4xl font-semibold text-center text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-4xl font-semibold text-center text-zinc-900">
           Medical Diagnosis Practice
         </h1>
-        <p className="text-lg text-center text-zinc-600 dark:text-zinc-400">
+        <p className="text-lg text-center text-zinc-600">
           Practice diagnostic reasoning through step-by-step case hints
         </p>
-        <button 
+        <button
           onClick={handleSignIn}
-          className="px-6 py-3 bg-zinc-900 text-white rounded-lg"
+          disabled={loading}
+          className="px-6 py-3 bg-zinc-900 text-white rounded-lg disabled:opacity-50"
         >
-          Sign In (Demo)
+          {loading ? "Loading..." : "Sign In with Google"}
         </button>
+        <p className="text-sm text-zinc-500">
+          (Demo mode - auth coming soon)
+        </p>
       </main>
     </div>
   );
