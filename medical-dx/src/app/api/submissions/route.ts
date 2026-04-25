@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const result = await pool.query(`
       SELECT s.*, c.title as case_title

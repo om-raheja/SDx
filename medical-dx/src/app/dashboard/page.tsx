@@ -1,33 +1,59 @@
 "use client";
 
-import { UserButton, useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+}
 
 const TEACHER_EMAIL = 'soniasethi66@hotmail.com';
 
 export default function Dashboard() {
-  const { user, isLoaded } = useUser();
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [cases, setCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!user) {
-      router.push('/');
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+
+    const userStr = cookies['scalekit_user'];
+    if (!userStr) {
+      router.push('/auth/signin');
       return;
     }
+
+    try {
+      setUser(JSON.parse(decodeURIComponent(userStr)));
+    } catch {
+      router.push('/auth/signin');
+      return;
+    }
+
     fetch("/api/cases")
       .then(res => res.json())
       .then(data => setCases(data))
-      .catch(() => setCases([]));
-  }, [user, isLoaded, router]);
+      .catch(() => setCases([]))
+      .finally(() => setLoading(false));
+  }, [router]);
 
-  if (!isLoaded || !user) {
+  const handleSignOut = () => {
+    document.cookie = 'scalekit_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    router.push('/auth/signin');
+  };
+
+  if (loading || !user) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  const isTeacher = user.emailAddresses.some(e => e.emailAddress === TEACHER_EMAIL);
+  const isTeacher = user.email === TEACHER_EMAIL;
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -42,7 +68,9 @@ export default function Dashboard() {
               Teacher
             </button>
           )}
-          <UserButton />
+          <button onClick={handleSignOut} className="px-4 py-2 bg-zinc-100 rounded-lg">
+            Sign Out
+          </button>
         </div>
       </header>
       <main className="max-w-4xl mx-auto py-8 px-6">

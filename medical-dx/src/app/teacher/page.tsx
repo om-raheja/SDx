@@ -1,34 +1,34 @@
 "use client";
 
-import { UserButton, useUser } from "@clerk/nextjs";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const TEACHER_EMAIL = 'soniasethi66@hotmail.com';
 
 export default function Teacher() {
-  const { user, isLoaded } = useUser();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [submissions, setSubmissions] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!user) {
-      router.push('/');
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
       return;
     }
-    const isTeacher = user.emailAddresses.some(e => e.emailAddress === TEACHER_EMAIL);
-    if (!isTeacher) {
-      router.push('/dashboard');
-      return;
+    if (status === "authenticated" && session?.user) {
+      if (session.user.email !== TEACHER_EMAIL) {
+        router.push("/dashboard");
+        return;
+      }
+      fetch("/api/submissions")
+        .then(res => res.json())
+        .then(data => setSubmissions(data))
+        .catch(() => {});
     }
-    fetch("/api/submissions")
-      .then(res => res.json())
-      .then(data => setSubmissions(data))
-      .catch(() => {});
-  }, [user, isLoaded, router]);
+  }, [session, status, router]);
 
-  if (!isLoaded || !user) {
+  if (status === "loading" || status === "unauthenticated") {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
@@ -43,7 +43,12 @@ export default function Teacher() {
           >
             Create Case
           </button>
-          <UserButton />
+          <button 
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className="px-4 py-2 bg-zinc-100 rounded-lg"
+          >
+            Sign Out
+          </button>
         </div>
       </header>
       <main className="max-w-4xl mx-auto py-8 px-6">
