@@ -1,34 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const { user, isLoaded } = useUser();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = () => {
-    setLoading(true);
-    setTimeout(() => router.push('/dashboard'), 500);
-  };
+  if (isLoaded && user) {
+    router.push('/dashboard');
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="flex flex-1 items-center justify-center bg-zinc-50 min-h-screen">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans min-h-screen">
-      <main className="flex flex-col items-center gap-8 py-16 px-8 max-w-lg w-full">
+    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 min-h-screen">
+      <header className="flex justify-end items-center p-4 gap-4 absolute top-0 right-0">
+        <SignInButton>
+          <button className="px-4 py-2 bg-zinc-100 rounded-lg">Sign In</button>
+        </SignInButton>
+        <SignUpButton>
+          <button className="px-4 py-2 bg-zinc-900 text-white rounded-lg">Sign Up</button>
+        </SignUpButton>
+      </header>
+      <main className="flex flex-col items-center gap-8 py-16 px-8 max-w-lg">
         <h1 className="text-4xl font-semibold text-center text-zinc-900">
           Medical Diagnosis Practice
         </h1>
         <p className="text-lg text-center text-zinc-600">
           Practice diagnostic reasoning through step-by-step case hints
         </p>
-        <button
-          onClick={handleSignIn}
-          disabled={loading}
-          className="px-6 py-3 bg-zinc-900 text-white rounded-lg disabled:opacity-50"
-        >
-          {loading ? "Loading..." : "Sign In with Google"}
-        </button>
-        <p className="text-sm text-zinc-500">(Demo mode - auth coming soon)</p>
       </main>
     </div>
   );
