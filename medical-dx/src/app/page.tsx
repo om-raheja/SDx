@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-
 export default function Home() {
+  const handleSignIn = () => {
+    document.cookie = "user=1;path=/";
+    window.location.href = "/dashboard";
+  };
+
   return (
     <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black min-h-screen">
       <main className="flex flex-col items-center gap-8 py-16 px-8 max-w-lg w-full">
@@ -14,7 +16,7 @@ export default function Home() {
           Practice diagnostic reasoning through step-by-step case hints
         </p>
         <button 
-          onClick={() => document.cookie = "user=1;path=/"; window.location.href = "/dashboard"}
+          onClick={handleSignIn}
           className="px-6 py-3 bg-zinc-900 text-white rounded-lg"
         >
           Sign In (Demo)
