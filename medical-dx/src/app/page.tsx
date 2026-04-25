@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -7,10 +9,7 @@ export default function Home() {
 
   const handleSignIn = () => {
     setLoading(true);
-    // Simulate sign in - in production this would call StackAuth
-    setTimeout(() => {
-      router.push('/dashboard');
-    }, 500);
+    setTimeout(() => router.push('/dashboard'), 500);
   };
 
   return (
@@ -29,9 +28,7 @@ export default function Home() {
         >
           {loading ? "Loading..." : "Sign In with Google"}
         </button>
-        <p className="text-sm text-zinc-500">
-          (Demo mode - auth coming soon)
-        </p>
+        <p className="text-sm text-zinc-500">(Demo mode - auth coming soon)</p>
       </main>
     </div>
   );
