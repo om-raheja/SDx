@@ -38,7 +38,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     return NextResponse.json({ success: true, submissionId });
   } catch (error) {
-    console.error('Error submitting diagnosis:', error);
     return NextResponse.json({ error: 'Failed to submit diagnosis' }, { status: 500 });
   }
 }

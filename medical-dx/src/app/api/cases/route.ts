@@ -3,16 +3,13 @@ import { stackServerApp } from '@/lib/stackauth';
 import pool from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
 
-const TEACHER_EMAIL = process.env.TEACHER_EMAIL || 'soniasethi66@hotmail.com';
-
-export const dynamic = 'force-dynamic';
+const TEACHER_EMAIL = 'soniasethi66@hotmail.com';
 
 export async function GET() {
   try {
     const result = await pool.query('SELECT * FROM cases ORDER BY created_at DESC');
     return NextResponse.json(result.rows);
   } catch (error) {
-    console.error('Error fetching cases:', error);
     return NextResponse.json({ error: 'Failed to fetch cases' }, { status: 500 });
   }
 }
@@ -25,7 +22,7 @@ export async function POST(request: Request) {
     }
 
     if (user.primaryEmail !== TEACHER_EMAIL) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden - teacher only' }, { status: 403 });
     }
 
     const body = await request.json();

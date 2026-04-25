@@ -10,14 +10,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
 
     const { id } = await params;
-    const result = await pool.query(
-      'SELECT * FROM hints WHERE case_id = $1 ORDER BY hint_order',
-      [id]
-    );
-
+    const result = await pool.query('SELECT * FROM hints WHERE case_id = $1 ORDER BY hint_order', [id]);
     return NextResponse.json(result.rows);
   } catch (error) {
-    console.error('Error fetching hints:', error);
     return NextResponse.json({ error: 'Failed to fetch hints' }, { status: 500 });
   }
 }

@@ -1,37 +1,28 @@
-
 "use client";
 
-import { UserButton, useUser } from "@stackframe/stack";
+import { useUser, UserButton, useUser as useUserHook } from "@stackframe/stack";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function Dashboard() {
-  const user = useUser({ or: 'return-null' });
+  const user = useUser();
   const router = useRouter();
   const [cases, setCases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user === null) {
-      router.push('/handler/signin');
+    if (!user) {
       return;
     }
-    
-    if (user) {
-      fetch("/api/cases")
-        .then(res => res.json())
-        .then(data => setCases(data))
-        .catch(() => setCases([]))
-        .finally(() => setLoading(false));
-    }
-  }, [user, router]);
+    fetch("/api/cases")
+      .then(res => res.json())
+      .then(data => setCases(data))
+      .catch(() => setCases([]))
+      .finally(() => setLoading(false));
+  }, [user]);
 
-  if (user === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Redirecting...</p>
-      </div>
-    );
+  if (!user) {
+    return null;
   }
 
   return (
