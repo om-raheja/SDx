@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -19,6 +21,11 @@
   }
 }
 
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
 .dark {
   --background: #0a0a0a;
   --foreground: #ededed;
@@ -28,9 +35,30 @@ html.dark {
   color-scheme: dark;
 }
 
-html.dark body {
-  background: #0a0a0a;
-  color: #ededed;
+html.dark body,
+html.dark .min-h-screen {
+  background-color: #0a0a0a !important;
+  color: #ededed !important;
+}
+
+html.dark .bg-zinc-50 {
+  background-color: #0a0a0a !important;
+}
+
+html.dark .bg-white {
+  background-color: #18181b !important;
+}
+
+html.dark .text-zinc-900 {
+  color: #ededed !important;
+}
+
+html.dark .text-zinc-600 {
+  color: #a1a1aa !important;
+}
+
+html.dark .border-zinc-200 {
+  border-color: #3f3f46 !important;
 }
 
 body {
