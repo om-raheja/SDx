@@ -1,9 +1,15 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
   use: {
-    baseURL: 'https://medical-dx.vercel.app',
+    baseURL: 'https://sdxlab.vercel.app',
     headless: true,
   },
 });
