@@ -18,34 +18,25 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
-      acc[key] = value;
-      return acc;
-    }, {} as Record<string, string>);
-
-    const userStr = cookies['scalekit_user'];
-    if (!userStr) {
-      router.push('/auth/signin');
-      return;
-    }
-
-    try {
-      setUser(JSON.parse(decodeURIComponent(userStr)));
-    } catch {
-      router.push('/auth/signin');
-      return;
-    }
-
-    fetch("/api/cases")
-      .then(res => res.json())
-      .then(data => setCases(data))
-      .catch(() => setCases([]))
+    Promise.all([
+      fetch("/api/auth/me"),
+      fetch("/api/cases"),
+    ])
+      .then(([userRes, casesRes]) => Promise.all([userRes.json(), casesRes.json()]))
+      .then(([userData, casesData]) => {
+        if (userData.error || !userData.role) {
+          if (userData.error) router.push('/auth/signin');
+          return;
+        }
+        setUser({ id: userData.id, email: userData.email, name: userData.name });
+        setCases(Array.isArray(casesData) ? casesData : []);
+      })
+      .catch(() => router.push('/auth/signin'))
       .finally(() => setLoading(false));
   }, [router]);
 
-  const handleSignOut = () => {
-    document.cookie = 'scalekit_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  const handleSignOut = async () => {
+    await fetch("/api/auth/signout", { method: "POST" });
     router.push('/auth/signin');
   };
 

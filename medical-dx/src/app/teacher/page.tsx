@@ -1,34 +1,52 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const TEACHER_EMAIL = 'soniasethi66@hotmail.com';
 
 export default function Teacher() {
-  const { data: session, status } = useSession();
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+
+    const userStr = cookies['scalekit_user'];
+    if (!userStr) {
+      router.push('/auth/signin');
       return;
     }
-    if (status === "authenticated" && session?.user) {
-      if (session.user.email !== TEACHER_EMAIL) {
-        router.push("/dashboard");
+
+    try {
+      const userData = JSON.parse(decodeURIComponent(userStr));
+      setUser(userData);
+      if (userData.email !== TEACHER_EMAIL) {
+        router.push('/dashboard');
         return;
       }
-      fetch("/api/submissions")
-        .then(res => res.json())
-        .then(data => setSubmissions(data))
-        .catch(() => {});
+    } catch {
+      router.push('/auth/signin');
+      return;
     }
-  }, [session, status, router]);
 
-  if (status === "loading" || status === "unauthenticated") {
+    fetch("/api/submissions")
+      .then(res => res.json())
+      .then(data => setSubmissions(data))
+      .catch(() => {});
+  }, [router]);
+
+  const handleSignOut = () => {
+    document.cookie = 'scalekit_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    router.push('/auth/signin');
+  };
+
+  if (!user) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
@@ -43,10 +61,7 @@ export default function Teacher() {
           >
             Create Case
           </button>
-          <button 
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="px-4 py-2 bg-zinc-100 rounded-lg"
-          >
+          <button onClick={handleSignOut} className="px-4 py-2 bg-zinc-100 rounded-lg">
             Sign Out
           </button>
         </div>
