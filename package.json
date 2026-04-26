@@ -1,0 +1,40 @@
+{
+  "name": "medical-dx",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@auth/pg-adapter": "^1.11.2",
+    "@scalekit-sdk/node": "^2.6.0",
+    "@stackframe/react": "^2.8.85",
+    "@stackframe/stack": "^2.8.12",
+    "@types/pg": "^8.20.0",
+    "@types/uuid": "^10.0.0",
+    "@vercel/blob": "^2.3.3",
+    "cloudinary": "^2.10.0",
+    "next": "^15.2.4",
+    "next-auth": "^5.0.0-beta.31",
+    "node-crate": "^3.0.0",
+    "pg": "^8.20.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "server-only": "^0.0.1",
+    "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.1.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
