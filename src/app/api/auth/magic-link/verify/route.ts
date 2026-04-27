@@ -113,10 +113,12 @@ export async function POST(request: Request) {
     }
 
     const data = await res.json();
+    console.log('ScaleKit verify response (POST):', JSON.stringify(data));
     const userId = data.user?.id || `magic_${Date.now()}`;
     const email = data.user?.email || 'unknown';
     const name = data.user?.name || email;
     const role = TEACHER_EMAILS.includes(email) ? 'teacher' : 'student';
+    console.log('Determined email:', email, 'role:', role);
 
     await saveUser(userId, email, name, role);
 
