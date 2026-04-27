@@ -13,8 +13,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const submissionId = uuidv4();
     await pool.query(
-      'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final) VALUES ($1, $2, $3, $4, $5, NOW(), $6)',
-      [submissionId, session.id, caseId, diagnosis, submitted_after_hint, is_final || false]
+      'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final, email) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7)',
+      [submissionId, session.id, caseId, diagnosis, submitted_after_hint, is_final || false, session.email]
     );
 
     return NextResponse.json({ success: true, submissionId });
