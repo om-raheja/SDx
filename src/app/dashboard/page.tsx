@@ -64,7 +64,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">SDx Lab</h1>
+        <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">SDx Lab {isTeacher && <span className="text-xs bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-2 py-0.5 rounded ml-2">Teacher</span>}</h1>
         <div className="flex items-center gap-4">
           <button
             onClick={toggleDarkMode}
