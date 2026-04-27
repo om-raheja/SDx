@@ -9,6 +9,7 @@ export default function Teacher() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const [cases, setCases] = useState<any[]>([]);
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
@@ -34,6 +35,16 @@ export default function Teacher() {
         fetch("/api/submissions")
           .then(res => res.json())
           .then(data => setSubmissions(Array.isArray(data) ? data : []))
+          .catch(() => {});
+        
+        // Also fetch cases for the list
+        fetch("/api/cases")
+          .then(res => res.json())
+          .then(data => {
+            if (Array.isArray(data)) {
+              setCases(data);
+            }
+          })
           .catch(() => {});
       });
   }, [router]);
@@ -85,7 +96,25 @@ export default function Teacher() {
         </div>
       </header>
       <main className="max-w-4xl mx-auto py-8 px-6">
-        <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Student Submissions</h2>
+        <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Cases</h2>
+        {cases.length === 0 ? (
+          <p className="text-zinc-600 dark:text-zinc-400 mb-8">No cases yet. Create your first case!</p>
+        ) : (
+          <div className="grid gap-4 mb-8">
+            {cases.map((c: any) => (
+              <button
+                key={c.id}
+                onClick={() => router.push(`/teacher/cases/${c.id}`)}
+                className="flex items-center justify-between p-6 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 text-left"
+              >
+                <span className="text-lg font-medium text-zinc-900 dark:text-white">{c.title}</span>
+                <span className="text-zinc-500 dark:text-zinc-400">{new Date(c.created_at).toLocaleString()} →</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Recent Submissions</h2>
         {submissions.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">No submissions yet.</p>
         ) : (

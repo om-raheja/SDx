@@ -37,7 +37,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, caseId });
-  } catch {
+  } catch (err) {
+    console.error('Create case error:', err);
     return NextResponse.json({ error: 'Failed to create case' }, { status: 500 });
   }
 }
