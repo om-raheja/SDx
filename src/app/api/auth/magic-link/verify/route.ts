@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
-const TEACHER_EMAIL = 'soniasethi66@hotmail.com';
+const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
 
 async function getAccessToken(): Promise<string> {
   const res = await fetch(`${process.env.SCALEKIT_ENVIRONMENT_URL}/oauth/token`, {
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     const userId = data.user?.id || `magic_${Date.now()}`;
     const email = data.user?.email || 'unknown';
     const name = data.user?.name || email;
-    const role = email === TEACHER_EMAIL ? 'teacher' : 'student';
+    const role = TEACHER_EMAILS.includes(email) ? 'teacher' : 'student';
 
     await saveUser(userId, email, name, role);
 
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     const userId = data.user?.id || `magic_${Date.now()}`;
     const email = data.user?.email || 'unknown';
     const name = data.user?.name || email;
-    const role = email === TEACHER_EMAIL ? 'teacher' : 'student';
+    const role = TEACHER_EMAILS.includes(email) ? 'teacher' : 'student';
 
     await saveUser(userId, email, name, role);
 
