@@ -137,20 +137,59 @@ export default function Dashboard() {
       {userSubmissions.length > 0 && (
         <main className="max-w-4xl mx-auto py-8 px-6">
           <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Your Past Submissions</h2>
-          <div className="space-y-4">
-            {userSubmissions.map((s: any) => (
-              <div key={s.id} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                <div className="flex justify-between mb-2">
-                  <span className="font-medium text-zinc-900 dark:text-white">{s.case_title || 'Unknown Case'}</span>
-                  <span className="text-sm text-zinc-500 dark:text-zinc-400">{new Date(s.created_at).toLocaleString()}</span>
-                </div>
-                <p className="text-zinc-600 dark:text-zinc-300">
-                  After Hint {s.submitted_after_hint}: {s.diagnosis}
-                  {s.is_final && <span className="ml-2 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-400 rounded">Final</span>}
-                </p>
+          {(() => {
+            const grouped = userSubmissions.reduce((acc: Record<string, any>, s: any) => {
+              const key = s.case_id;
+              if (!acc[key]) {
+                acc[key] = {
+                  case_title: s.case_title || 'Unknown',
+                  case_id: s.case_id,
+                  submissions: [],
+                  created_at: s.created_at,
+                };
+              }
+              acc[key].submissions.push(s);
+              if (new Date(s.created_at) > new Date(acc[key].created_at)) {
+                acc[key].created_at = s.created_at;
+              }
+              return acc;
+            }, {});
+            
+            return (
+              <div className="space-y-6">
+                {Object.values(grouped).map((g: any) => (
+                  <div key={g.case_id} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="font-medium text-zinc-900 dark:text-white">{g.case_title}</h3>
+                      <div className="text-right">
+                        <span className="text-xs text-zinc-400">
+                          {g.submissions.filter((s: any) => s.is_final).length > 0 ? '✓ Complete' : `${g.submissions.length}/7`}
+                        </span>
+                        <p className="text-xs text-zinc-400">{new Date(g.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {[1,2,3,4,5,6,7].map(hintNum => {
+                        const sub = g.submissions.find((s: any) => s.submitted_after_hint === hintNum);
+                        return (
+                          <div key={hintNum} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-800">
+                            <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium min-w-[50px] text-center">
+                              H{hintNum}
+                            </span>
+                            {sub ? (
+                              <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis}</span>
+                            ) : (
+                              <span className="text-zinc-400 italic">pending</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </main>
       )}
     </div>
