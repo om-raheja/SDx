@@ -18,6 +18,6 @@ export async function GET() {
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error('User submissions error:', err);
-    return NextResponse.json({ error: 'Failed to fetch submissions' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch submissions', details: String(err) }, { status: 500 });
   }
 }
