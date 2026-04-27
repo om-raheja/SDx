@@ -11,9 +11,9 @@ export async function GET() {
       SELECT s.*, c.title as case_title
       FROM submissions s
       LEFT JOIN cases c ON s.case_id = c.id
-      WHERE s.user_id = $1 OR s.email = $1
+      WHERE s.user_id = $1
       ORDER BY s.created_at DESC
-    `, [session.id, session.email]);
+    `, [session.id]);
     
     return NextResponse.json(result.rows);
   } catch (err) {
