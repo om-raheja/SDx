@@ -7,6 +7,7 @@ export default function SignInPage() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [authRequestId, setAuthRequestId] = useState("");
+  const [storedEmail, setStoredEmail] = useState("");
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [verifying, setVerifying] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -45,6 +46,7 @@ export default function SignInPage() {
       if (res.ok) {
         const data = await res.json();
         setAuthRequestId(data.auth_request_id);
+        setStoredEmail(email);
         setSent(true);
       }
     } catch (err) {
@@ -114,7 +116,7 @@ export default function SignInPage() {
       const res = await fetch("/api/auth/magic-link/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: finalCode, auth_request_id: authRequestId }),
+        body: JSON.stringify({ code: finalCode, auth_request_id: authRequestId, email: storedEmail }),
       });
       if (res.ok) {
         window.location.href = "/dashboard";

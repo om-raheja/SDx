@@ -52,13 +52,17 @@ export async function POST(request: Request) {
 
     const data = await res.json();
     
-    // Store email with auth_request_id for later lookup
     if (data.auth_request_id) {
       authRequestEmails.set(data.auth_request_id, email);
-      setTimeout(() => authRequestEmails.delete(data.auth_request_id), 300000);
+      // Also store with a composite key that includes the email for backup
+      authRequestEmails.set(`${data.auth_request_id}:${email}`, email);
+      setTimeout(() => {
+        authRequestEmails.delete(data.auth_request_id);
+        authRequestEmails.delete(`${data.auth_request_id}:${email}`);
+      }, 300000);
     }
     
-    return NextResponse.json(data);
+    return NextResponse.json({ ...data, email }); // Return email in response for frontend
   } catch (err) {
     console.error('Magic link error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

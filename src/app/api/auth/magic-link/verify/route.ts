@@ -88,7 +88,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { code, auth_request_id } = await request.json();
+    const body = await request.json();
+    const { code, auth_request_id, email: providedEmail } = body;
     
     if (!code) {
       return NextResponse.json({ error: 'Code required' }, { status: 400 });
@@ -116,9 +117,16 @@ export async function POST(request: Request) {
     }
 
     const data = await res.json();
+    let email = authRequestEmails.get(auth_request_id) || 
+                authRequestEmails.get(`${auth_request_id}:${providedEmail}`) || 
+                providedEmail ||
+                data.user?.email || 
+                'unknown';
+    if (auth_request_id) {
+      authRequestEmails.delete(auth_request_id);
+      authRequestEmails.delete(`${auth_request_id}:${providedEmail}`);
+    }
     const userId = data.user?.id || `magic_${Date.now()}`;
-    const email = authRequestEmails.get(auth_request_id) || data.user?.email || 'unknown';
-    if (auth_request_id) authRequestEmails.delete(auth_request_id);
     const name = data.user?.name || email;
     const role = TEACHER_EMAILS.includes(email) ? 'teacher' : 'student';
     console.log('Verified email:', email, 'role:', role);
