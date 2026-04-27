@@ -133,17 +133,26 @@ export default function CaseDetail() {
                   </div>
                   
                   <div className="space-y-2">
-                    {student.submissions
-                      .sort((a, b) => a.submitted_after_hint - b.submitted_after_hint)
-                      .map((sub, idx) => (
-                        <div key={sub.id} className="flex items-center gap-3 text-sm">
-                          <span className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded">
-                            Hint {sub.submitted_after_hint}
-                            {sub.is_final && <span className="ml-1 text-red-500">(Final)</span>}
+                    {[1, 2, 3, 4, 5, 6, 7].map((hintNum) => {
+                      const sub = student.submissions.find(s => s.submitted_after_hint === hintNum);
+                      return (
+                        <div key={hintNum} className="flex items-start gap-3 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-800/50">
+                          <span className="px-2 py-1 bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded font-medium min-w-[60px] text-center">
+                            Hint {hintNum}
                           </span>
-                          <span className="text-zinc-900 dark:text-zinc-200">{sub.diagnosis}</span>
+                          {sub ? (
+                            <div className="flex-1">
+                              <span className="text-zinc-900 dark:text-zinc-200">{sub.diagnosis}</span>
+                              {sub.is_final && (
+                                <span className="ml-2 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-400 rounded">Final</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-zinc-400 dark:text-zinc-500 italic">No diagnosis</span>
+                          )}
                         </div>
-                      ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}

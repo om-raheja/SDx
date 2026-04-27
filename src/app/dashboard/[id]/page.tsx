@@ -11,6 +11,11 @@ interface Hint {
   labs?: string;
 }
 
+interface Diagnosis {
+  hint: number;
+  diagnosis: string;
+}
+
 export default function CaseDetail() {
   const router = useRouter();
   const params = useParams();
@@ -18,9 +23,10 @@ export default function CaseDetail() {
   const [caseData, setCaseData] = useState<any>(null);
   const [hints, setHints] = useState<Hint[]>([]);
   const [currentHintIndex, setCurrentHintIndex] = useState(0);
-  const [diagnosis, setDiagnosis] = useState("");
+  const [currentDiagnosis, setCurrentDiagnosis] = useState("");
+  const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [submittedDiagnosis, setSubmittedDiagnosis] = useState("");
+  const [completed, setCompleted] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +37,10 @@ export default function CaseDetail() {
     if (isDark) {
       document.documentElement.classList.add("dark");
     }
+  }, []);
 
+  useEffect(() => {
+    if (!id) return;
     fetch(`/api/cases/${id}`)
       .then(res => res.json())
       .then(data => {
@@ -44,22 +53,32 @@ export default function CaseDetail() {
   }, [id]);
 
   const currentHint = hints[currentHintIndex];
+  const hasSubmittedForCurrentHint = diagnoses.some(d => d.hint === currentHintIndex + 1);
 
   const handleSubmitDiagnosis = async () => {
-    if (!diagnosis.trim()) return;
+    if (!currentDiagnosis.trim()) return;
     setSubmitting(true);
+    
+    const newDiagnosis = { hint: currentHintIndex + 1, diagnosis: currentDiagnosis.trim() };
+    const updatedDiagnoses = [...diagnoses, newDiagnosis];
+    setDiagnoses(updatedDiagnoses);
+    
     try {
+      const isLastHint = currentHintIndex === hints.length - 1;
       const res = await fetch(`/api/cases/${id}/submissions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          diagnosis: diagnosis.trim(),
+          diagnosis: currentDiagnosis.trim(),
           submitted_after_hint: currentHintIndex + 1,
-          is_final: currentHintIndex === hints.length - 1,
+          is_final: isLastHint,
         }),
       });
-      if (res.ok) {
-        setSubmittedDiagnosis(diagnosis);
+      if (res.ok && isLastHint) {
+        setCompleted(true);
+      } else if (res.ok) {
+        // Clear current diagnosis after submitting, move to next hint
+        setCurrentDiagnosis("");
       }
     } catch (err) {
       console.error(err);
@@ -68,17 +87,23 @@ export default function CaseDetail() {
   };
 
   const handleNextHint = () => {
-    if (currentHintIndex < hints.length - 1) {
+    if (hasSubmittedForCurrentHint && currentHintIndex < hints.length - 1) {
       setCurrentHintIndex(currentHintIndex + 1);
-      setDiagnosis("");
+      setCurrentDiagnosis("");
     }
   };
 
   const handlePrevHint = () => {
     if (currentHintIndex > 0) {
       setCurrentHintIndex(currentHintIndex - 1);
-      setDiagnosis("");
+      // Don't restore diagnosis to input, just let them view
+      setCurrentDiagnosis("");
     }
+  };
+
+  const goToHint = (hintNum: number) => {
+    setCurrentHintIndex(hintNum - 1);
+    setCurrentDiagnosis("");
   };
 
   if (loading) {
@@ -131,7 +156,7 @@ export default function CaseDetail() {
         </div>
 
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3">Current Hint</h2>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3">Hint {currentHintIndex + 1}</h2>
           <div className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
             <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{currentHint?.content}</p>
             {currentHint?.image_url && (
@@ -147,56 +172,93 @@ export default function CaseDetail() {
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-            Your Diagnosis
+            Your Diagnosis for Hint {currentHintIndex + 1}
           </label>
           <textarea
-            value={diagnosis}
-            onChange={(e) => setDiagnosis(e.target.value)}
+            value={currentDiagnosis}
+            onChange={(e) => setCurrentDiagnosis(e.target.value)}
             placeholder="Enter your diagnosis..."
             rows={3}
-            className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg"
+            disabled={hasSubmittedForCurrentHint}
+            className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg disabled:opacity-50 disabled:bg-zinc-100 disabled:dark:bg-zinc-800"
           />
         </div>
 
-        {submittedDiagnosis && (
+        {hasSubmittedForCurrentHint && (
           <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <p className="text-green-700 dark:text-green-400 font-medium">Diagnosis submitted!</p>
-            <p className="text-green-600 dark:text-green-500">{submittedDiagnosis}</p>
+            <p className="text-green-700 dark:text-green-400 font-medium">Diagnosis submitted for Hint {currentHintIndex + 1}</p>
           </div>
         )}
 
-        <div className="flex gap-4">
-          <button
-            onClick={handleSubmitDiagnosis}
-            disabled={!diagnosis.trim() || submitting}
-            className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-medium disabled:opacity-50"
-          >
-            {submitting ? "Submitting..." : "Submit Diagnosis"}
-          </button>
-          
-          {currentHintIndex < hints.length - 1 && (
+        {!hasSubmittedForCurrentHint && (
+          <div className="flex gap-4 mb-8">
+            <button
+              onClick={handleSubmitDiagnosis}
+              disabled={!currentDiagnosis.trim() || submitting}
+              className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-medium disabled:opacity-50"
+            >
+              {submitting ? "Submitting..." : "Submit Diagnosis"}
+            </button>
+          </div>
+        )}
+
+        {hasSubmittedForCurrentHint && currentHintIndex < hints.length - 1 && (
+          <div className="flex gap-4 mb-8">
             <button
               onClick={handleNextHint}
-              className="px-6 py-3 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-medium"
             >
               Next Hint →
             </button>
-          )}
-          
-          {currentHintIndex > 0 && (
-            <button
-              onClick={handlePrevHint}
-              className="px-6 py-3 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              ← Previous
-            </button>
-          )}
-        </div>
+          </div>
+        )}
 
-        {currentHintIndex === hints.length - 1 && submittedDiagnosis && (
-          <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-blue-700 dark:text-blue-400 font-medium">You've completed all hints!</p>
-            <p className="text-blue-600 dark:text-blue-500">Your final diagnosis: {submittedDiagnosis}</p>
+        {currentHintIndex > 0 && (
+          <button
+            onClick={handlePrevHint}
+            className="px-6 py-3 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 mb-8"
+          >
+            ← Previous Hint
+          </button>
+        )}
+
+        {diagnoses.length > 0 && (
+          <div className="mt-8 pt-8 border-t border-zinc-200 dark:border-zinc-700">
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">Your Diagnoses</h2>
+            <div className="space-y-4">
+              {diagnoses.map((d) => (
+                <div 
+                  key={d.hint} 
+                  onClick={() => goToHint(d.hint)}
+                  className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                    d.hint === currentHintIndex + 1
+                      ? 'border-zinc-500 dark:border-zinc-400 bg-zinc-100 dark:bg-zinc-800'
+                      : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Hint {d.hint}</span>
+                    {d.hint === hints.length && (
+                      <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-400 rounded">Final</span>
+                    )}
+                  </div>
+                  <p className="text-zinc-900 dark:text-zinc-200">{d.diagnosis}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {completed && (
+          <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-center">
+            <p className="text-xl font-bold text-blue-700 dark:text-blue-400 mb-2">Case Complete!</p>
+            <p className="text-blue-600 dark:text-blue-500">Your final diagnosis has been submitted to your teacher.</p>
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Back to Dashboard
+            </button>
           </div>
         )}
       </main>
