@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+const authRequestEmails = new Map<string, string>();
+
 async function getAccessToken(): Promise<string> {
   const res = await fetch(`${process.env.SCALEKIT_ENVIRONMENT_URL}/oauth/token`, {
     method: 'POST',
@@ -49,6 +51,13 @@ export async function POST(request: Request) {
     }
 
     const data = await res.json();
+    
+    // Store email with auth_request_id for later lookup
+    if (data.auth_request_id) {
+      authRequestEmails.set(data.auth_request_id, email);
+      setTimeout(() => authRequestEmails.delete(data.auth_request_id), 300000);
+    }
+    
     return NextResponse.json(data);
   } catch (err) {
     console.error('Magic link error:', err);

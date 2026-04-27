@@ -3,6 +3,8 @@ import pool from '@/lib/db';
 
 const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
 
+const authRequestEmails = new Map<string, string>();
+
 async function getAccessToken(): Promise<string> {
   const res = await fetch(`${process.env.SCALEKIT_ENVIRONMENT_URL}/oauth/token`, {
     method: 'POST',
@@ -62,7 +64,8 @@ export async function GET(request: Request) {
 
     const data = await res.json();
     const userId = data.user?.id || `magic_${Date.now()}`;
-    const email = data.user?.email || 'unknown';
+    const email = authRequestEmails.get(authRequestId) || data.user?.email || 'unknown';
+    authRequestEmails.delete(authRequestId);
     const name = data.user?.name || email;
     const role = TEACHER_EMAILS.includes(email) ? 'teacher' : 'student';
 
@@ -102,7 +105,7 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify({
           code,
-          auth_request_id: auth_request_id,
+          auth_request_id,
         }),
       }
     );
@@ -113,16 +116,16 @@ export async function POST(request: Request) {
     }
 
     const data = await res.json();
-    console.log('ScaleKit verify response (POST):', JSON.stringify(data));
     const userId = data.user?.id || `magic_${Date.now()}`;
-    const email = data.user?.email || 'unknown';
+    const email = authRequestEmails.get(auth_request_id) || data.user?.email || 'unknown';
+    if (auth_request_id) authRequestEmails.delete(auth_request_id);
     const name = data.user?.name || email;
     const role = TEACHER_EMAILS.includes(email) ? 'teacher' : 'student';
-    console.log('Determined email:', email, 'role:', role);
+    console.log('Verified email:', email, 'role:', role);
 
     await saveUser(userId, email, name, role);
 
-    const response = NextResponse.json({ success: true });
+    const response = NextResponse.json({ success: true, email, role });
     response.cookies.set('scalekit_user', JSON.stringify({ id: userId, email, name, role }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
