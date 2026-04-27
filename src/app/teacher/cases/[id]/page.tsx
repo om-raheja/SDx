@@ -104,7 +104,11 @@ export default function CaseDetail() {
                   <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Hint {h.hint_order}</span>
                   {h.content && <p className="text-zinc-900 dark:text-zinc-200">{h.content}</p>}
                   {h.image_url && (
-                    <img src={h.image_url} alt={`Hint ${h.hint_order}`} className="mt-2 max-w-xs rounded border" />
+                    <img 
+                      src={`/api/image?url=${encodeURIComponent(h.image_url)}`} 
+                      alt={`Hint ${h.hint_order}`} 
+                      className="mt-2 max-w-xs rounded border" 
+                    />
                   )}
                 </div>
               ))}

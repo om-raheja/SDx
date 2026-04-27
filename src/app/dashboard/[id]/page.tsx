@@ -164,7 +164,11 @@ export default function CaseDetail() {
           <div className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
             <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{currentHint?.content}</p>
             {currentHint?.image_url && (
-              <img src={currentHint.image_url} alt="Case" className="mt-4 max-w-full rounded" />
+              <img 
+                src={`/api/image?url=${encodeURIComponent(currentHint.image_url)}`} 
+                alt="Case" 
+                className="mt-4 max-w-full rounded" 
+              />
             )}
             {currentHint?.labs && (
               <div className="mt-4 p-3 bg-zinc-50 dark:bg-zinc-800 rounded">
