@@ -122,11 +122,12 @@ export default function Teacher() {
             {submissions.map((s: any) => (
               <div key={s.id} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
                 <div className="flex justify-between mb-2">
-                  <span className="font-medium text-zinc-900 dark:text-white">Student</span>
+                  <span className="font-medium text-zinc-900 dark:text-white">{s.student_email || s.user_email || 'Unknown'}</span>
                   <span className="text-sm text-zinc-500 dark:text-zinc-400">{new Date(s.created_at).toLocaleString()}</span>
                 </div>
                 <p className="text-zinc-600 dark:text-zinc-300">Case: {s.case_title || 'Unknown'}</p>
-                <p className="text-zinc-600 dark:text-zinc-300">Diagnosis: {s.diagnosis}</p>
+                <p className="text-zinc-600 dark:text-zinc-300">Diagnosis (Hint {s.submitted_after_hint}): {s.diagnosis}</p>
+                {s.is_final && <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-400 rounded">Final</span>}
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">After Hint {s.submitted_after_hint} {s.is_final && "(Final)"}</p>
               </div>
             ))}

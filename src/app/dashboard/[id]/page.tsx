@@ -89,21 +89,25 @@ export default function CaseDetail() {
   const handleNextHint = () => {
     if (hasSubmittedForCurrentHint && currentHintIndex < hints.length - 1) {
       setCurrentHintIndex(currentHintIndex + 1);
-      setCurrentDiagnosis("");
+      // Check if we already have a diagnosis for this hint
+      const existing = diagnoses.find(d => d.hint === currentHintIndex + 1);
+      setCurrentDiagnosis(existing?.diagnosis || "");
     }
   };
 
   const handlePrevHint = () => {
     if (currentHintIndex > 0) {
       setCurrentHintIndex(currentHintIndex - 1);
-      // Don't restore diagnosis to input, just let them view
-      setCurrentDiagnosis("");
+      // Show existing diagnosis for this hint if any
+      const existing = diagnoses.find(d => d.hint === currentHintIndex + 1);
+      setCurrentDiagnosis(existing?.diagnosis || "");
     }
   };
 
   const goToHint = (hintNum: number) => {
     setCurrentHintIndex(hintNum - 1);
-    setCurrentDiagnosis("");
+    const existing = diagnoses.find(d => d.hint === hintNum);
+    setCurrentDiagnosis(existing?.diagnosis || "");
   };
 
   if (loading) {
