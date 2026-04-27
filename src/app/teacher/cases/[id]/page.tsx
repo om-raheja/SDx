@@ -102,7 +102,10 @@ export default function CaseDetail() {
               {hints.map((h: any) => (
                 <div key={h.id} className="p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
                   <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Hint {h.hint_order}</span>
-                  <p className="text-zinc-900 dark:text-zinc-200">{h.content}</p>
+                  {h.content && <p className="text-zinc-900 dark:text-zinc-200">{h.content}</p>}
+                  {h.image_url && (
+                    <img src={h.image_url} alt={`Hint ${h.hint_order}`} className="mt-2 max-w-xs rounded border" />
+                  )}
                 </div>
               ))}
             </div>

@@ -1,18 +1,65 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+
+interface HintData {
+  content: string;
+  imageUrl: string;
+}
 
 export default function CreateCase() {
   const router = useRouter();
   const [title, setTitle] = useState("");
-  const [hints, setHints] = useState<string[]>(Array(7).fill(""));
+  const [hints, setHints] = useState<HintData[]>(
+    Array(7).fill(null).map(() => ({ content: "", imageUrl: "" }))
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState<{index: number}[]>([]);
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const handleHintChange = (index: number, value: string) => {
+  const handleFileInputRef = (index: number, el: HTMLInputElement | null) => {
+    fileInputRefs.current[index] = el;
+  };
+
+  const handleContentChange = (index: number, value: string) => {
     const newHints = [...hints];
-    newHints[index] = value;
+    newHints[index].content = value;
+    setHints(newHints);
+  };
+
+  const handleImageUpload = async (index: number, file: File) => {
+    if (!file) return;
+    
+    setUploading([...uploading, { index }]);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const newHints = [...hints];
+        newHints[index].imageUrl = data.url;
+        setHints(newHints);
+      } else {
+        setError('Failed to upload image');
+      }
+    } catch {
+      setError('Upload failed');
+    } finally {
+      setUploading(uploading.filter(u => u.index !== index));
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    const newHints = [...hints];
+    newHints[index].imageUrl = "";
     setHints(newHints);
   };
 
@@ -25,7 +72,7 @@ export default function CreateCase() {
       return;
     }
     
-    const emptyHints = hints.filter(h => !h.trim());
+    const emptyHints = hints.filter(h => !h.content.trim());
     if (emptyHints.length > 0) {
       setError(`Please fill in all 7 hints (${emptyHints.length} empty)`);
       return;
@@ -38,9 +85,10 @@ export default function CreateCase() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
-          hints: hints.map((content, idx) => ({
+          hints: hints.map((h, idx) => ({
             hint_order: idx + 1,
-            content: content.trim(),
+            content: h.content.trim(),
+            image_url: h.imageUrl || null,
           })),
         }),
       });
@@ -83,24 +131,63 @@ export default function CreateCase() {
             />
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">7 Progressive Hints</h2>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Write hints that progressively reveal more information to help students diagnose the case.
+              Add text or an image (or both) for each hint. At least one is required.
             </p>
             
             {hints.map((hint, idx) => (
-              <div key={idx}>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+              <div key={idx} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Hint {idx + 1}
                 </label>
+                
                 <textarea
-                  value={hint}
-                  onChange={(e) => handleHintChange(idx, e.target.value)}
-                  placeholder={`Hint ${idx + 1} - what information is revealed at this stage?`}
+                  value={hint.content}
+                  onChange={(e) => handleContentChange(idx, e.target.value)}
+                  placeholder={`Text for hint ${idx + 1}...`}
                   rows={3}
-                  className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg"
+                  className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg mb-3"
                 />
+                
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={(el) => handleFileInputRef(idx, el)}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageUpload(idx, file);
+                    }}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRefs.current[idx]?.click()}
+                    disabled={uploading.some(u => u.index === idx)}
+                    className="px-4 py-2 text-sm border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    {uploading.some(u => u.index === idx) ? "Uploading..." : "Add Image"}
+                  </button>
+                  
+                  {hint.imageUrl && (
+                    <div className="relative">
+                      <img src={hint.imageUrl} alt={`Hint ${idx + 1}`} className="h-20 w-auto rounded border" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                {hint.imageUrl && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">Image attached</p>
+                )}
               </div>
             ))}
           </div>
@@ -111,7 +198,7 @@ export default function CreateCase() {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || uploading.length > 0}
             className="w-full px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-medium disabled:opacity-50"
           >
             {submitting ? "Creating..." : "Create Case"}
