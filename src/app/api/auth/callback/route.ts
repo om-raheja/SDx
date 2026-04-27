@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateWithCode } from '@/lib/scalekit';
 import pool from '@/lib/db';
 
-const TEACHER_EMAIL = 'soniasethi66@hotmail.com';
+const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     const userId = result.user.id;
     const email = result.user.email;
     const name = result.user.name;
-    const role = email === TEACHER_EMAIL ? 'teacher' : 'student';
+    const role = TEACHER_EMAILS.includes(email) ? 'teacher' : 'student';
 
     await pool.query(`
       INSERT INTO users (id, email, name, role, created_at)
