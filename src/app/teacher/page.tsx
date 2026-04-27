@@ -127,9 +127,14 @@ export default function Teacher() {
                 case_title: s.case_title || 'Unknown',
                 case_id: s.case_id,
                 submissions: [],
+                created_at: s.created_at,
               };
             }
             acc[key].submissions.push(s);
+            // Update timestamp to latest
+            if (new Date(s.created_at) > new Date(acc[key].created_at)) {
+              acc[key].created_at = s.created_at;
+            }
             return acc;
           }, {});
           
@@ -156,9 +161,12 @@ export default function Teacher() {
                       <h3 className="font-medium text-zinc-900 dark:text-white">{g.email}</h3>
                       <p className="text-sm text-zinc-500">{g.case_title}</p>
                     </div>
-                    <span className="text-xs text-zinc-400">
-                      {g.submissions.length}/7 hints
-                    </span>
+                    <div className="text-right">
+                      <span className="text-xs text-zinc-400">
+                        {g.submissions.filter((s: any) => s.is_final).length > 0 ? '✓ Complete' : `${g.submissions.length}/7`}
+                      </span>
+                      <p className="text-xs text-zinc-400">{new Date(g.created_at).toLocaleString()}</p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 gap-2">
                     {[1,2,3,4,5,6,7].map(hintNum => {
