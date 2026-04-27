@@ -117,22 +117,57 @@ export default function Teacher() {
         <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Recent Submissions</h2>
         {submissions.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">No submissions yet.</p>
-        ) : (
-          <div className="space-y-4">
-            {submissions.map((s: any) => (
-              <div key={s.id} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                <div className="flex justify-between mb-2">
-                  <span className="font-medium text-zinc-900 dark:text-white">{s.student_email || s.user_email || 'Unknown'}</span>
-                  <span className="text-sm text-zinc-500 dark:text-zinc-400">{new Date(s.created_at).toLocaleString()}</span>
+        ) : (() => {
+          // Group by student + case
+          const grouped = submissions.reduce((acc: Record<string, any>, s: any) => {
+            const key = `${s.student_email || s.user_email || 'unknown'}-${s.case_id}`;
+            if (!acc[key]) {
+              acc[key] = {
+                email: s.student_email || s.user_email || 'unknown',
+                case_title: s.case_title || 'Unknown',
+                case_id: s.case_id,
+                submissions: [],
+              };
+            }
+            acc[key].submissions.push(s);
+            return acc;
+          }, {});
+          
+          return (
+            <div className="space-y-6">
+              {Object.values(grouped).map((g: any) => (
+                <div key={`${g.email}-${g.case_id}`} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-medium text-zinc-900 dark:text-white">{g.email}</h3>
+                      <p className="text-sm text-zinc-500">{g.case_title}</p>
+                    </div>
+                    <span className="text-xs text-zinc-400">
+                      {g.submissions.length}/7 hints
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {[1,2,3,4,5,6,7].map(hintNum => {
+                      const sub = g.submissions.find((s: any) => s.submitted_after_hint === hintNum);
+                      return (
+                        <div key={hintNum} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-800">
+                          <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium min-w-[50px] text-center">
+                            H{hintNum}
+                          </span>
+                          {sub ? (
+                            <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis}</span>
+                          ) : (
+                            <span className="text-zinc-400 italic">pending</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <p className="text-zinc-600 dark:text-zinc-300">Case: {s.case_title || 'Unknown'}</p>
-                <p className="text-zinc-600 dark:text-zinc-300">Diagnosis (Hint {s.submitted_after_hint}): {s.diagnosis}</p>
-                {s.is_final && <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-400 rounded">Final</span>}
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">After Hint {s.submitted_after_hint} {s.is_final && "(Final)"}</p>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          );
+        })()}
       </main>
     </div>
   );
