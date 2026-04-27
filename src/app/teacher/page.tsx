@@ -146,8 +146,6 @@ export default function Teacher() {
                     onClick={() => {
                       fetch(`/api/cases/${g.case_id}/submissions`, {
                         method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ user_id: g.submissions[0]?.user_id }),
                       }).then(() => window.location.reload());
                     }}
                     className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
