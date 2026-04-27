@@ -7,17 +7,17 @@ export async function GET() {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
-    const result = await pool.query(`
-      SELECT s.*, c.title as case_title
-      FROM submissions s
-      LEFT JOIN cases c ON s.case_id = c.id
-      WHERE s.user_id = $1
-      ORDER BY s.created_at DESC
-    `, [session.id]);
+    const userId = session.id;
+    const email = session.email;
+    
+    const result = await pool.query(
+      "SELECT s.*, c.title as case_title FROM submissions s LEFT JOIN cases c ON s.case_id = c.id WHERE s.user_id = $1 OR s.email = $2 ORDER BY s.created_at DESC",
+      [userId, email]
+    );
     
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error('User submissions error:', err);
-    return NextResponse.json({ error: 'Failed to fetch submissions', details: String(err) }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch submissions' }, { status: 500 });
   }
 }
