@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const blob = await put(file.name, buffer, {
-      access: 'public',
+      access: 'private',
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
 
