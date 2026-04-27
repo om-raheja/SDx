@@ -22,3 +22,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Failed to submit diagnosis' }, { status: 500 });
   }
 }
+
+const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
+
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    if (!TEACHER_EMAILS.includes(session.email)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    
+    const { id: caseId } = await params;
+    const { user_id } = await request.json();
+    
+    await pool.query('DELETE FROM submissions WHERE case_id = $1 AND user_id = $2', [caseId, user_id]);
+    
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('Delete submissions error:', err);
+    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
+  }
+}

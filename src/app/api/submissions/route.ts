@@ -8,7 +8,7 @@ export async function GET() {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     
     const result = await pool.query(`
-      SELECT s.*, c.title as case_title, u.email as student_email
+      SELECT s.*, c.title as case_title, u.email as student_email, u.id as user_id
       FROM submissions s
       LEFT JOIN cases c ON s.case_id = c.id
       LEFT JOIN users u ON s.user_id = u.id
