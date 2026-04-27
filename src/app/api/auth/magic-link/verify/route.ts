@@ -126,7 +126,8 @@ export async function POST(request: Request) {
       authRequestEmails.delete(auth_request_id);
       authRequestEmails.delete(`${auth_request_id}:${providedEmail}`);
     }
-    const userId = data.user?.id || `magic_${Date.now()}`;
+    // Use consistent user ID based on email hash for magic link users
+    const userId = data.user?.id || `user_${Buffer.from(email).toString('base64').slice(0, 20)}`;
     const name = data.user?.name || email;
     const role = TEACHER_EMAILS.includes(email) ? 'teacher' : 'student';
     console.log('Verified email:', email, 'role:', role);

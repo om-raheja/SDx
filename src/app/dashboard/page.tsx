@@ -15,6 +15,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [cases, setCases] = useState<any[]>([]);
+  const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
@@ -38,6 +39,15 @@ export default function Dashboard() {
         }
         setUser({ id: userData.id, email: userData.email, name: userData.name });
         setCases(Array.isArray(casesData) ? casesData : []);
+        // Fetch user's past submissions
+        fetch("/api/auth/me/submissions")
+          .then(res => res.json())
+          .then(subData => {
+            if (Array.isArray(subData)) {
+              setUserSubmissions(subData);
+            }
+          })
+          .catch(() => {});
       })
       .catch(() => router.push('/auth/signin'))
       .finally(() => setLoading(false));
@@ -123,6 +133,26 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      {userSubmissions.length > 0 && (
+        <main className="max-w-4xl mx-auto py-8 px-6">
+          <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Your Past Submissions</h2>
+          <div className="space-y-4">
+            {userSubmissions.map((s: any) => (
+              <div key={s.id} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                <div className="flex justify-between mb-2">
+                  <span className="font-medium text-zinc-900 dark:text-white">{s.case_title || 'Unknown Case'}</span>
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">{new Date(s.created_at).toLocaleString()}</span>
+                </div>
+                <p className="text-zinc-600 dark:text-zinc-300">
+                  After Hint {s.submitted_after_hint}: {s.diagnosis}
+                  {s.is_final && <span className="ml-2 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-400 rounded">Final</span>}
+                </p>
+              </div>
+            ))}
+          </div>
+        </main>
+      )}
     </div>
   );
 }
