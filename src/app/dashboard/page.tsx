@@ -95,6 +95,17 @@ export default function Dashboard() {
       </header>
       <main className="max-w-4xl mx-auto py-8 px-6">
         <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Available Cases</h2>
+        {isTeacher && (
+          <button
+            onClick={() => router.push('/teacher/create')}
+            className="w-full mb-6 p-6 bg-white dark:bg-zinc-900 rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-zinc-900 dark:hover:border-zinc-400 flex items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+          >
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="text-lg font-medium">Create New Case</span>
+          </button>
+        )}
         {cases.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">No cases available yet.</p>
         ) : (
