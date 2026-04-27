@@ -18,6 +18,7 @@ export default function CaseDetail() {
   const params = useParams();
   const id = params.id as string;
   const [caseData, setCaseData] = useState<any>(null);
+  const [hints, setHints] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -29,6 +30,7 @@ export default function CaseDetail() {
       .then(data => {
         if (data.case) {
           setCaseData(data.case);
+          setHints(data.hints || []);
           setSubmissions(data.submissions || []);
         }
       })
@@ -94,7 +96,19 @@ export default function CaseDetail() {
         </div>
 
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">Hints ({submissions.length === 0 ? 0 : 'View in student mode'})</h2>
+          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">Hints ({hints.length})</h2>
+          {hints.length > 0 ? (
+            <div className="space-y-3">
+              {hints.map((h: any) => (
+                <div key={h.id} className="p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Hint {h.hint_order}</span>
+                  <p className="text-zinc-900 dark:text-zinc-200">{h.content}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-zinc-600 dark:text-zinc-400">No hints yet.</p>
+          )}
         </div>
 
         <div>
