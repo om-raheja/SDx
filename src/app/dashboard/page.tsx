@@ -9,7 +9,7 @@ interface User {
   name: string;
 }
 
-const TEACHER_EMAIL = 'soniasethi66@hotmail.com';
+const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
 
 export default function Dashboard() {
   const router = useRouter();
@@ -59,7 +59,7 @@ export default function Dashboard() {
     return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">Loading...</div>;
   }
 
-  const isTeacher = user.email === TEACHER_EMAIL;
+  const isTeacher = TEACHER_EMAILS.includes(user.email);
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">

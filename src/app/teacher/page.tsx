@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const TEACHER_EMAIL = 'soniasethi66@hotmail.com';
+const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
 
 export default function Teacher() {
   const router = useRouter();
@@ -27,7 +27,7 @@ export default function Teacher() {
           return;
         }
         setUser(userData);
-        if (userData.email !== TEACHER_EMAIL) {
+        if (!TEACHER_EMAILS.includes(userData.email)) {
           router.push('/dashboard');
           return;
         }
