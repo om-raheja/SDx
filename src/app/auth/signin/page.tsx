@@ -6,10 +6,6 @@ export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
-  const [authRequestId, setAuthRequestId] = useState("");
-  const [storedEmail, setStoredEmail] = useState("");
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
-  const [verifying, setVerifying] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | undefined)[]>([]);
 
@@ -44,87 +40,12 @@ export default function SignInPage() {
         body: JSON.stringify({ email }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setAuthRequestId(data.auth_request_id);
-        setStoredEmail(email);
         setSent(true);
       }
     } catch (err) {
       console.error(err);
     }
     setSending(false);
-  };
-
-  const handleCodeChange = (index: number, value: string) => {
-    if (value.length > 1) {
-      const digits = value.replace(/\D/g, "").slice(0, 6).split("");
-      const newCode = [...code];
-      digits.forEach((digit, i) => {
-        if (index + i < 6) {
-          newCode[index + i] = digit;
-        }
-      });
-      setCode(newCode);
-      const nextIndex = Math.min(index + digits.length, 5);
-      inputRefs.current[nextIndex]?.focus();
-      if (newCode.every(d => d) && newCode.join("").length === 6) {
-        handleVerify(newCode.join(""));
-      }
-      return;
-    }
-
-    const newCode = [...code];
-    newCode[index] = value.replace(/\D/g, "");
-    setCode(newCode);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    if (newCode.every(d => d) && index === 5) {
-      handleVerify(newCode.join(""));
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6).split("");
-    if (pasted.length > 0) {
-      const newCode = [...code];
-      pasted.forEach((digit, i) => {
-        if (i < 6) newCode[i] = digit;
-      });
-      setCode(newCode);
-      inputRefs.current[Math.min(pasted.length, 5)]?.focus();
-      if (newCode.every(d => d) && newCode.join("").length === 6) {
-        handleVerify(newCode.join(""));
-      }
-    }
-  };
-
-  const handleVerify = async (codeToVerify?: string) => {
-    const finalCode = codeToVerify || code.join("");
-    if (!finalCode || finalCode.length !== 6) return;
-    setVerifying(true);
-    try {
-      const res = await fetch("/api/auth/magic-link/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: finalCode, auth_request_id: authRequestId, email: storedEmail }),
-      });
-      if (res.ok) {
-        window.location.href = "/dashboard";
-      }
-    } catch (err) {
-      console.error(err);
-    }
-    setVerifying(false);
   };
 
   return (
@@ -199,37 +120,15 @@ export default function SignInPage() {
             </form>
           </>
         ) : (
-          <div className="flex flex-col gap-4 w-full max-w-sm items-center">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 text-center">
-              Enter the verification code from your email
+          <div className="flex flex-col gap-4 w-full max-w-sm items-center text-center">
+            <p className="text-zinc-600 dark:text-zinc-400">
+              Check your email for the magic link
             </p>
-            <div className="flex gap-2" onPaste={handlePaste}>
-              {code.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={el => { inputRefs.current[index] = el ?? undefined; }}
-                  type="text"
-                  inputMode="numeric"
-                  value={digit}
-                  onChange={(e) => handleCodeChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  className="w-12 h-14 text-center text-xl font-bold border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg"
-                  maxLength={6}
-                />
-              ))}
-            </div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-500">
+              The link will expire in 15 minutes
+            </p>
             <button
-              onClick={() => handleVerify()}
-              disabled={verifying || code.some(d => !d)}
-              className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg disabled:opacity-50 hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
-            >
-              {verifying ? "Verifying..." : "Verify Code"}
-            </button>
-            <button
-              onClick={() => {
-                setSent(false);
-                setCode(["", "", "", "", "", ""]);
-              }}
+              onClick={() => setSent(false)}
               className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
             >
               Use different email

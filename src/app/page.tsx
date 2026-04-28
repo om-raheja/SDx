@@ -8,19 +8,18 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for session cookie
-    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
-      acc[key] = value;
-      return acc;
-    }, {} as Record<string, string>);
-
-    if (cookies['scalekit_user']) {
-      router.replace("/dashboard");
-    } else {
-      router.replace("/auth/signin");
-    }
-    setLoading(false);
+    fetch("/api/auth/me")
+      .then(res => {
+        if (res.ok) {
+          router.replace("/dashboard");
+        } else {
+          router.replace("/auth/signin");
+        }
+      })
+      .catch(() => {
+        router.replace("/auth/signin");
+      })
+      .finally(() => setLoading(false));
   }, [router]);
 
   if (loading) {

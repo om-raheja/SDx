@@ -1,17 +1,10 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const userCookie = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
-    maxAge: 60 * 60 * 24 * 7,
-  };
-
   try {
     const { cookies } = await import('next/headers');
     const cookieStore = await cookies();
-    const userStr = cookieStore.get('scalekit_user')?.value;
+    const userStr = cookieStore.get('session')?.value;
 
     if (!userStr) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });

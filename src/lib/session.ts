@@ -9,7 +9,7 @@ export interface SessionUser {
 export async function getSession(): Promise<SessionUser | null> {
   try {
     const cookieStore = await cookies();
-    const userCookie = cookieStore.get('scalekit_user');
+    const userCookie = cookieStore.get('session');
     
     if (!userCookie?.value) {
       return null;

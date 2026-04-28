@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server';
-import { authenticateWithCode } from '@/lib/scalekit';
-import pool from '@/lib/db';
-
-const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
+import { workos } from '@/lib/workos';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
-  const origin = new URL(request.url).origin;
 
   if (error) {
     return NextResponse.redirect(new URL('/auth/signin?error=' + error, request.url));
@@ -19,27 +15,19 @@ export async function GET(request: Request) {
   }
 
   try {
-    const redirectUri = `${origin}/api/auth/callback`;
-    const result = await authenticateWithCode(code, redirectUri);
-    
-    const userId = result.user.id;
-    const email = result.user.email;
-    const name = result.user.name;
-    const role = TEACHER_EMAILS.includes(email) ? 'teacher' : 'student';
+    const workosAny: any = workos;
+    const { profile } = await workosAny.userManagement.authenticateWithCode({
+      code,
+    });
 
-    await pool.query(`
-      INSERT INTO users (id, email, name, role, created_at)
-      VALUES ($1, $2, $3, $4, NOW())
-      ON CONFLICT (id) DO UPDATE SET email = $2, name = $3
-    `, [userId, email, name, role]);
-    
+    const user = {
+      id: profile.id,
+      email: profile.email,
+      name: profile.firstName + ' ' + profile.lastName,
+    };
+
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
-    response.cookies.set('scalekit_user', JSON.stringify({
-      id: userId,
-      email,
-      name,
-      role,
-    }), {
+    response.cookies.set('session', JSON.stringify(user), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
