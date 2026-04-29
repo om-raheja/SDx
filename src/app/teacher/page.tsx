@@ -69,11 +69,15 @@ export default function Teacher() {
       return;
     }
     
+    console.log('Submitting for:', submissionId, comment);
+    
     const res = await fetch("/api/teacher-comments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ submission_id: submissionId, comment }),
     });
+    
+    console.log('Response:', res.status, res.ok);
     
     if (res.ok) {
       setNewComment(prev => ({ ...prev, [submissionId]: '' }));
@@ -81,6 +85,7 @@ export default function Teacher() {
       loadComments(submissionId);
     } else {
       const data = await res.json();
+      console.log('Error response:', data);
       setCommentError(prev => ({ ...prev, [submissionId]: data.error || 'Failed to add comment' }));
     }
   };
