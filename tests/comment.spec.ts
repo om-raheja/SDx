@@ -1,12 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('comment works', async ({ page }) => {
-  page.on('response', r => {
-    if (r.url().includes('teacher-comments')) {
-      console.log(r.url(), r.status());
-    }
-  });
-  
+test('comment shows email', async ({ page }) => {
   await page.goto('https://sdxlab.vercel.app/auth/signin');
   await page.fill('input[placeholder="Email"]', 'buttabomma67@outlook.com');
   await page.fill('input[placeholder="Password"]', 'October32018!');
@@ -22,9 +16,10 @@ test('comment works', async ({ page }) => {
     await page.waitForTimeout(500);
     await page.locator('input[placeholder="Write a comment..."]').first().fill('Test comment');
     await page.locator('button:has-text("Send")').first().click();
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(2000);
     
-    const shown = await page.locator('text=Test comment').isVisible();
-    console.log('Result:', shown ? 'PASS' : 'FAIL');
+    // Check for buttabomma (email prefix)
+    const name = await page.locator('text=buttabomma').isVisible();
+    console.log('Email prefix shown:', name ? 'YES' : 'NO');
   }
 });
