@@ -224,24 +224,35 @@ export default function Dashboard() {
         ) : (
           <div className="grid gap-4">
             {cases.map((c) => (
-              <div key={c.id} className="flex items-center gap-2">
+              <div
+                key={c.id}
+                className="flex items-center justify-between p-6 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {isTeacher && (
+                    <button
+                      onClick={() => deleteCase(c.id)}
+                      className="text-red-500 hover:text-red-600"
+                      title="Delete case"
+                      aria-label="Delete case"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => router.push(`/dashboard/${c.id}`)}
+                    className="text-left text-lg font-medium text-zinc-900 dark:text-white truncate"
+                  >
+                    {c.title}
+                  </button>
+                </div>
                 <button
                   onClick={() => router.push(`/dashboard/${c.id}`)}
-                  className="flex-1 flex items-center justify-between p-6 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 text-left"
+                  className="text-zinc-500 dark:text-zinc-400"
+                  aria-label={`Open ${c.title}`}
                 >
-                  <span className="text-lg font-medium text-zinc-900 dark:text-white">{c.title}</span>
-                  <span className="text-zinc-500 dark:text-zinc-400">→</span>
+                  →
                 </button>
-                {isTeacher && (
-                  <button
-                    onClick={() => deleteCase(c.id)}
-                    className="p-3 rounded-lg border border-red-200 text-red-500 hover:text-red-600 hover:border-red-300 bg-white dark:bg-zinc-900 dark:border-red-900/50"
-                    title="Delete case"
-                    aria-label="Delete case"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
               </div>
             ))}
           </div>
@@ -297,11 +308,12 @@ export default function Dashboard() {
                                     <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis}</span>
                                     <button
                                       onClick={() => deleteSubmission(sub.id)}
-                                      className="text-red-500 hover:text-red-600"
+                                      className="inline-flex items-center gap-1 text-red-500 hover:text-red-600 text-xs"
                                       title="Delete submission"
                                       aria-label="Delete submission"
                                     >
                                       <Trash2 className="w-4 h-4" />
+                                      Delete
                                     </button>
                                   </div>
                                 ) : (
