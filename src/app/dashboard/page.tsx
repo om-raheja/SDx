@@ -242,6 +242,9 @@ export default function Dashboard() {
           <div className="grid gap-4">
             {cases.map((c) => {
               const groups = isTeacher ? getCaseSubmissionGroups(c.id) : [];
+              const caseSubmissionCount = isTeacher
+                ? teacherSubmissions.filter((s: any) => s.case_id === c.id).length
+                : 0;
 
               return (
                 <div key={c.id} className="rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900">
@@ -287,17 +290,26 @@ export default function Dashboard() {
                       <button
                         onClick={() => setExpandedCases((prev) => ({ ...prev, [c.id]: !prev[c.id] }))}
                         className="w-full px-6 py-4 flex items-center justify-between text-zinc-700 dark:text-zinc-200"
+                        disabled={caseSubmissionCount === 0}
                       >
-                        <span className="text-base font-medium underline">View Submissions</span>
-                        {expandedCases[c.id] ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                        <div className="flex items-center gap-2">
+                          <span className="text-base font-medium underline">View Submissions</span>
+                          <span className="px-2 py-0.5 rounded bg-blue-600 text-white text-xs font-semibold">
+                            {caseSubmissionCount}
+                          </span>
+                        </div>
+                        {caseSubmissionCount === 0 ? (
+                          <span className="text-sm text-zinc-500 dark:text-zinc-400">(None)</span>
+                        ) : expandedCases[c.id] ? (
+                          <ChevronDown className="w-5 h-5" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5" />
+                        )}
                       </button>
 
-                      {expandedCases[c.id] && (
+                      {expandedCases[c.id] && caseSubmissionCount > 0 && (
                         <div className="border-t border-zinc-200 dark:border-zinc-700">
-                          {groups.length === 0 ? (
-                            <p className="px-6 py-4 text-zinc-600 dark:text-zinc-400 text-sm">No submissions yet.</p>
-                          ) : (
-                            groups.map((g: any) => {
+                          {groups.map((g: any) => {
                               const primarySubmissionId = g.submissions[0]?.id;
                               if (!primarySubmissionId) return null;
 
@@ -383,8 +395,7 @@ export default function Dashboard() {
                                   </div>
                                 </div>
                               );
-                            })
-                          )}
+                            })}
                         </div>
                       )}
                     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Pencil } from "lucide-react";
 
@@ -19,7 +19,8 @@ export default function EditCaseHints() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [editingImageUrl, setEditingImageUrl] = useState<Record<number, boolean>>({});
+  const [uploadingImage, setUploadingImage] = useState<Record<number, boolean>>({});
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -51,6 +52,50 @@ export default function EditCaseHints() {
       next[index] = { ...next[index], [key]: value };
       return next;
     });
+  };
+
+  const setFileInputRef = (index: number, el: HTMLInputElement | null) => {
+    fileInputRefs.current[index] = el;
+  };
+
+  const replaceHintImage = async (index: number, file: File) => {
+    if (!file) return;
+    setUploadingImage((prev) => ({ ...prev, [index]: true }));
+    setError("");
+
+    try {
+      const oldUrl = hints[index]?.imageUrl;
+      if (oldUrl) {
+        await fetch("/api/upload", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: oldUrl }),
+        });
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const data = await uploadRes.json();
+        setError(data.error || "Image upload failed");
+        return;
+      }
+
+      const data = await uploadRes.json();
+      updateHint(index, "imageUrl", data.url);
+    } catch {
+      setError("Image upload failed");
+    } finally {
+      setUploadingImage((prev) => ({ ...prev, [index]: false }));
+      if (fileInputRefs.current[index]) {
+        fileInputRefs.current[index]!.value = "";
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -122,7 +167,17 @@ export default function EditCaseHints() {
                 placeholder="Hint content"
                 className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded mb-2"
               />
-              {hint.imageUrl && !editingImageUrl[index] ? (
+              <input
+                type="file"
+                accept="image/*"
+                ref={(el) => setFileInputRef(index, el)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) replaceHintImage(index, file);
+                }}
+                className="hidden"
+              />
+              {hint.imageUrl ? (
                 <div className="relative mb-2">
                   <img
                     src={`/api/image?url=${encodeURIComponent(hint.imageUrl)}`}
@@ -130,23 +185,23 @@ export default function EditCaseHints() {
                     className="w-full max-h-56 object-contain rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800"
                   />
                   <button
-                    onClick={() => setEditingImageUrl((prev) => ({ ...prev, [index]: true }))}
+                    onClick={() => fileInputRefs.current[index]?.click()}
                     className="absolute top-2 right-2 p-1.5 rounded bg-black/60 text-white hover:bg-black/70"
-                    title="Edit image URL"
-                    aria-label="Edit image URL"
+                    title="Replace image"
+                    aria-label="Replace image"
+                    disabled={uploadingImage[index]}
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
-                <input
-                  type="text"
-                  value={hint.imageUrl}
-                  onChange={(e) => updateHint(index, "imageUrl", e.target.value)}
-                  onBlur={() => setEditingImageUrl((prev) => ({ ...prev, [index]: false }))}
-                  placeholder="Image URL (optional)"
-                  className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded mb-2"
-                />
+                <button
+                  onClick={() => fileInputRefs.current[index]?.click()}
+                  className="mb-2 px-3 py-2 text-sm bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 rounded border border-zinc-300 dark:border-zinc-700"
+                  disabled={uploadingImage[index]}
+                >
+                  {uploadingImage[index] ? "Uploading..." : "Upload Image"}
+                </button>
               )}
               <textarea
                 value={hint.labs}
