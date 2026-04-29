@@ -88,7 +88,7 @@ export default function Teacher() {
         [submissionId]: [...(prev[submissionId] || []), { 
           id: 'new-' + Date.now(), 
           comment, 
-          teacher_name: 'Teacher',
+          teacher_name: user?.email?.split('@')[0] || 'Teacher',
           created_at: new Date().toISOString() 
         }]
       }));
