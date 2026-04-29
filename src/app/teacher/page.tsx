@@ -14,6 +14,7 @@ export default function Teacher() {
   const [comments, setComments] = useState<Record<string, any[]>>({});
   const [newComment, setNewComment] = useState<Record<string, string>>({});
   const [commentingOn, setCommentingOn] = useState<string | null>(null);
+  const [commentError, setCommentError] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const isDark = localStorage.getItem("darkMode") === "true" || 
@@ -63,7 +64,10 @@ export default function Teacher() {
 
   const submitComment = async (submissionId: string) => {
     const comment = newComment[submissionId];
-    if (!comment?.trim()) return;
+    if (!comment?.trim()) {
+      setCommentError(prev => ({ ...prev, [submissionId]: 'Comment cannot be empty' }));
+      return;
+    }
     
     const res = await fetch("/api/teacher-comments", {
       method: "POST",
@@ -73,8 +77,17 @@ export default function Teacher() {
     
     if (res.ok) {
       setNewComment(prev => ({ ...prev, [submissionId]: '' }));
+      setCommentError(prev => ({ ...prev, [submissionId]: '' }));
       loadComments(submissionId);
+    } else {
+      const data = await res.json();
+      setCommentError(prev => ({ ...prev, [submissionId]: data.error || 'Failed to add comment' }));
     }
+  };
+
+  const deleteComment = async (commentId: string, submissionId: string) => {
+    await fetch(`/api/teacher-comments?comment_id=${commentId}`, { method: 'DELETE' });
+    loadComments(submissionId);
   };
 
   if (!user) {
@@ -165,9 +178,20 @@ export default function Teacher() {
                     {commentingOn === g.submissions[0].id && (
                       <div className="space-y-2">
                         {comments[g.submissions[0].id]?.map((c: any) => (
-                          <div key={c.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm">
-                            <span className="font-medium text-blue-700 dark:text-blue-300">{c.teacher_name}: </span>
-                            <span className="text-zinc-700 dark:text-zinc-300">{c.comment}</span>
+                          <div key={c.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm flex justify-between items-start">
+                            <div>
+                              <span className="font-medium text-blue-700 dark:text-blue-300">{c.teacher_name}: </span>
+                              <span className="text-zinc-700 dark:text-zinc-300">{c.comment}</span>
+                              <span className="block text-xs text-zinc-400 mt-1">
+                                {c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now'}
+                              </span>
+                            </div>
+                            <button 
+                              onClick={() => deleteComment(c.id, g.submissions[0].id)}
+                              className="text-red-500 hover:text-red-600 text-xs ml-2"
+                            >
+                              Delete
+                            </button>
                           </div>
                         ))}
                         <div className="flex gap-2">
@@ -176,6 +200,7 @@ export default function Teacher() {
                             placeholder="Write a comment..."
                             value={newComment[g.submissions[0].id] || ''}
                             onChange={(e) => setNewComment(prev => ({ ...prev, [g.submissions[0].id]: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') submitComment(g.submissions[0].id); }}
                             className="flex-1 px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                           />
                           <button 
@@ -185,6 +210,9 @@ export default function Teacher() {
                             Send
                           </button>
                         </div>
+                        {commentError[g.submissions[0].id] && (
+                          <p className="text-red-500 text-xs">{commentError[g.submissions[0].id]}</p>
+                        )}
                       </div>
                     )}
                   </div>

@@ -39,12 +39,38 @@ export async function GET(request: Request) {
 
   try {
     const result = await pool.query(
-      'SELECT tc.*, u.name as teacher_name FROM teacher_comments tc JOIN users u ON tc.teacher_id = u.id WHERE tc.submission_id = $1 ORDER BY tc.created_at DESC',
+      'SELECT tc.*, u.name as teacher_name FROM teacher_comments tc JOIN users u ON tc.teacher_id = u.id WHERE tc.submission_id = $1 ORDER BY tc.created_at ASC',
       [submission_id]
     );
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error('Get comments error:', err);
     return NextResponse.json([], { status: 200 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
+    if (!TEACHER_EMAILS.includes(session.email)) {
+      return NextResponse.json({ error: 'Only teachers can delete comments' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const comment_id = searchParams.get('comment_id');
+
+    if (!comment_id) {
+      return NextResponse.json({ error: 'Comment ID required' }, { status: 400 });
+    }
+
+    await pool.query('DELETE FROM teacher_comments WHERE id = $1', [comment_id]);
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('Delete comment error:', err);
+    return NextResponse.json({ error: 'Failed to delete comment' }, { status: 500 });
   }
 }
