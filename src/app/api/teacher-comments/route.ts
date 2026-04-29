@@ -2,7 +2,25 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
 
+async function ensureTables() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS teacher_comments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        submission_id VARCHAR(255),
+        teacher_id VARCHAR(255),
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+  } catch (e) {
+    console.log('ensureTables error (may be ok):', e);
+  }
+}
+
 export async function POST(request: Request) {
+  await ensureTables();
+  
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -12,12 +30,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Only teachers can comment' }, { status: 403 });
     }
 
-    const { submission_id, comment } = await request.json();
+    const body = await request.json();
+    const { submission_id, comment } = body;
+    console.log('Adding comment:', submission_id, comment);
+    
     if (!submission_id || !comment) {
       return NextResponse.json({ error: 'Submission ID and comment required' }, { status: 400 });
     }
 
-    await pool.query(
+    const result = await pool.query(
       'INSERT INTO teacher_comments (id, submission_id, teacher_id, comment, created_at) VALUES (gen_random_uuid(), $1, $2, $3, NOW())',
       [submission_id, session.id, comment]
     );
@@ -25,7 +46,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('Comment error:', err);
-    return NextResponse.json({ error: 'Failed to add comment' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to add comment: ' + String(err) }, { status: 500 });
   }
 }
 

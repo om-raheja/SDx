@@ -49,7 +49,7 @@ export async function POST() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS teacher_comments (
         id UUID PRIMARY KEY,
-        submission_id UUID REFERENCES submissions(id),
+        submission_id VARCHAR(255),
         teacher_id VARCHAR(255),
         comment TEXT,
         created_at TIMESTAMP DEFAULT NOW()
