@@ -11,18 +11,20 @@ test('comment flow', async ({ page }) => {
   await page.waitForTimeout(3000);
   
   const btn = page.locator('button:has-text("Add Comment")').first();
-  const exists = await btn.isVisible().catch(() => false);
-  console.log('Add Comment:', exists);
-  
-  if (exists) {
+  if (await btn.isVisible()) {
+    const initialCount = await page.locator('text=Comment').count();
+    console.log('Initial comments:', initialCount);
+    
     await btn.click();
     await page.waitForTimeout(500);
-    await page.fill('input[placeholder="Write a comment..."]', 'Test comment');
+    await page.fill('input[placeholder="Write a comment..."]', 'Test comment ' + Date.now());
     await page.click('button:has-text("Send")');
     await page.waitForTimeout(3000);
     
-    const shown = await page.locator('text=Test comment').isVisible();
-    console.log('Result:', shown ? 'PASS' : 'FAIL');
-    expect(shown).toBe(true);
+    const finalCount = await page.locator('text=Test comment').count();
+    console.log('Final comments:', finalCount);
+    expect(finalCount).toBeGreaterThan(initialCount);
+  } else {
+    console.log('No submissions');
   }
 });

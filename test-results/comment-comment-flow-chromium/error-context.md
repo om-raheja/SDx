@@ -12,7 +12,10 @@
 # Error details
 
 ```
-Test timeout of 60000ms exceeded.
+Error: expect(received).toBeGreaterThan(expected)
+
+Expected: > 2
+Received:   0
 ```
 
 # Page snapshot
@@ -85,4 +88,40 @@ Test timeout of 60000ms exceeded.
               - generic [ref=e66]: Hemolysis Hereditary spherocytosis meckels diverticulum INfectious gastroenteritis Inflammatory bowel disease Hemolytic anemia Syncope Dehydration Acute Gastroenteritis
           - button "Add Comment" [ref=e68]
   - alert [ref=e69]
+```
+
+# Test source
+
+```ts
+  1  | import { test, expect } from '@playwright/test';
+  2  | 
+  3  | test('comment flow', async ({ page }) => {
+  4  |   await page.goto('https://sdxlab.vercel.app/auth/signin');
+  5  |   await page.fill('input[placeholder="Email"]', 'buttabomma67@outlook.com');
+  6  |   await page.fill('input[placeholder="Password"]', 'October32018!');
+  7  |   await page.click('button:has-text("Sign In")');
+  8  |   await page.waitForURL(/\/dashboard/, { timeout: 15000 });
+  9  |   
+  10 |   await page.goto('https://sdxlab.vercel.app/teacher');
+  11 |   await page.waitForTimeout(3000);
+  12 |   
+  13 |   const btn = page.locator('button:has-text("Add Comment")').first();
+  14 |   if (await btn.isVisible()) {
+  15 |     const initialCount = await page.locator('text=Comment').count();
+  16 |     console.log('Initial comments:', initialCount);
+  17 |     
+  18 |     await btn.click();
+  19 |     await page.waitForTimeout(500);
+  20 |     await page.fill('input[placeholder="Write a comment..."]', 'Test comment ' + Date.now());
+  21 |     await page.click('button:has-text("Send")');
+  22 |     await page.waitForTimeout(3000);
+  23 |     
+  24 |     const finalCount = await page.locator('text=Test comment').count();
+  25 |     console.log('Final comments:', finalCount);
+> 26 |     expect(finalCount).toBeGreaterThan(initialCount);
+     |                        ^ Error: expect(received).toBeGreaterThan(expected)
+  27 |   } else {
+  28 |     console.log('No submissions');
+  29 |   }
+  30 | });
 ```
