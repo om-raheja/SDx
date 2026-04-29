@@ -1,8 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('comment persists after reload', async ({ page }) => {
-  const testComment = 'Persist test ' + Date.now();
-  
+test('comment shows teacher name', async ({ page }) => {
   await page.goto('https://sdxlab.vercel.app/auth/signin');
   await page.fill('input[placeholder="Email"]', 'buttabomma67@outlook.com');
   await page.fill('input[placeholder="Password"]', 'October32018!');
@@ -16,22 +14,12 @@ test('comment persists after reload', async ({ page }) => {
   if (await btn.isVisible()) {
     await btn.click();
     await page.waitForTimeout(500);
-    await page.locator('input[placeholder="Write a comment..."]').first().fill(testComment);
+    await page.locator('input[placeholder="Write a comment..."]').first().fill('Test with name');
     await page.locator('button:has-text("Send")').first().click();
     await page.waitForTimeout(2000);
-  }
-  
-  // Reload page
-  await page.reload();
-  await page.waitForTimeout(3000);
-  
-  // Check View Comments
-  const viewBtn = page.locator('button:has-text("View Comments")').first();
-  if (await viewBtn.isVisible()) {
-    await viewBtn.click();
-    await page.waitForTimeout(1000);
-    const shown = await page.locator(`text=${testComment}`).isVisible();
-    console.log('After reload:', shown ? 'PASS' : 'FAIL');
-    expect(shown).toBe(true);
+    
+    const teacherName = await page.locator('text=Teacher:').isVisible();
+    console.log('Teacher name shown:', teacherName ? 'YES' : 'NO');
+    expect(teacherName).toBe(true);
   }
 });

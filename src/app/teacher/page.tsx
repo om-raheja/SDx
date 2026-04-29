@@ -88,7 +88,7 @@ export default function Teacher() {
         [submissionId]: [...(prev[submissionId] || []), { 
           id: 'new-' + Date.now(), 
           comment, 
-          teacher_name: 'Teacher',
+          teacher_name: user?.name || user?.email?.split('@')[0] || 'Teacher',
           created_at: new Date().toISOString() 
         }]
       }));
@@ -207,7 +207,7 @@ export default function Teacher() {
                         {comments[g.submissions[0].id]?.map((c: any) => (
                           <div key={c.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm flex justify-between items-start">
                             <div>
-                              <span className="font-medium text-blue-700 dark:text-blue-300">{c.teacher_name}: </span>
+                              <span className="font-medium text-blue-700 dark:text-blue-300">{(c.teacher_name || 'Teacher')}: </span>
                               <span className="text-zinc-700 dark:text-zinc-300">{c.comment}</span>
                               <span className="block text-xs text-zinc-400 mt-1">
                                 {c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now'}
