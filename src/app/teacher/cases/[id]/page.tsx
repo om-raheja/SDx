@@ -3,170 +3,150 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 
-interface Submission {
-  id: string;
-  diagnosis: string;
-  submitted_after_hint: number;
-  is_final: boolean;
-  created_at: string;
-  student_name: string;
-  student_email: string;
+interface HintData {
+  content: string;
+  imageUrl: string;
+  labs: string;
 }
 
-export default function CaseDetail() {
+export default function EditCaseHints() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const [caseData, setCaseData] = useState<any>(null);
-  const [hints, setHints] = useState<any[]>([]);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [caseTitle, setCaseTitle] = useState("");
+  const [hints, setHints] = useState<HintData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!id) return;
+
     fetch(`/api/cases/${id}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.case) {
-          setCaseData(data.case);
-          setHints(data.hints || []);
-          setSubmissions(data.submissions || []);
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data?.case) {
+          setError("Case not found");
+          return;
         }
+
+        setCaseTitle(data.case.title || "");
+        const nextHints = (data.hints || []).map((h: any) => ({
+          content: h.content || "",
+          imageUrl: h.image_url || "",
+          labs: h.labs || "",
+        }));
+
+        setHints(nextHints.length > 0 ? nextHints : [{ content: "", imageUrl: "", labs: "" }, { content: "", imageUrl: "", labs: "" }]);
       })
+      .catch(() => setError("Failed to load case"))
       .finally(() => setLoading(false));
   }, [id]);
 
-  const handleDelete = async () => {
-    if (!confirm('Delete this case and all submissions? This cannot be undone.')) return;
-    setDeleting(true);
+  const updateHint = (index: number, key: keyof HintData, value: string) => {
+    setHints((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [key]: value };
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    if (hints.length < 2) {
+      setError("At least 2 hints are required");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    const payloadHints = hints.map((h, i) => ({
+      hint_order: i + 1,
+      content: h.content,
+      imageUrl: h.imageUrl,
+      labs: h.labs,
+    }));
+
     try {
-      const res = await fetch(`/api/cases/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/cases/${id}/hints`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hints: payloadHints }),
+      });
+
       if (res.ok) {
-        router.push('/teacher');
+        router.push("/dashboard");
       } else {
-        alert('Failed to delete case');
+        const data = await res.json();
+        setError(data.error || "Failed to save hints");
       }
     } catch {
-      alert('Failed to delete case');
-    } finally {
-      setDeleting(false);
+      setError("Failed to save hints");
     }
+
+    setSaving(false);
   };
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">Loading...</div>;
   }
 
-  if (!caseData) {
-    return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">Case not found</div>;
-  }
-
-  // Group submissions by student
-  const studentSubmissions = submissions.reduce((acc, s) => {
-    const key = s.student_email || 'unknown';
-    if (!acc[key]) {
-      acc[key] = { name: s.student_name, email: key, submissions: [] };
-    }
-    acc[key].submissions.push(s);
-    return acc;
-  }, {} as Record<string, { name: string; email: string; submissions: Submission[] }>);
-
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
-        <button onClick={() => router.push("/teacher")} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
-          ← Back
-        </button>
+        <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">Edit Case Hints</h1>
         <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+          onClick={() => router.push("/dashboard")}
+          className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 dark:text-white rounded-lg"
         >
-          {deleting ? 'Deleting...' : 'Delete Case'}
+          Back
         </button>
       </header>
-      
-      <main className="max-w-4xl mx-auto py-8 px-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">{caseData.title}</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">
-            Created: {new Date(caseData.created_at).toLocaleString()}
-          </p>
+
+      <main className="max-w-3xl mx-auto py-8 px-6 space-y-6">
+        <div className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-1">Case</p>
+          <p className="text-lg font-medium text-zinc-900 dark:text-white">{caseTitle}</p>
         </div>
 
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">Hints ({hints.length})</h2>
-          {hints.length > 0 ? (
-            <div className="space-y-3">
-              {hints.map((h: any) => (
-                <div key={h.id} className="p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                  <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Hint {h.hint_order}</span>
-                  {h.content && <p className="text-zinc-900 dark:text-zinc-200">{h.content}</p>}
-                  {h.image_url && (
-                    <img 
-                      src={`/api/image?url=${encodeURIComponent(h.image_url)}`} 
-                      alt={`Hint ${h.hint_order}`} 
-                      className="mt-2 max-w-xs rounded border" 
-                    />
-                  )}
-                </div>
-              ))}
+        <div className="space-y-4">
+          {hints.map((hint, index) => (
+            <div key={index} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Hint {index + 1}</p>
+              <textarea
+                value={hint.content}
+                onChange={(e) => updateHint(index, "content", e.target.value)}
+                rows={3}
+                placeholder="Hint content"
+                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded mb-2"
+              />
+              <input
+                type="text"
+                value={hint.imageUrl}
+                onChange={(e) => updateHint(index, "imageUrl", e.target.value)}
+                placeholder="Image URL (optional)"
+                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded mb-2"
+              />
+              <textarea
+                value={hint.labs}
+                onChange={(e) => updateHint(index, "labs", e.target.value)}
+                rows={2}
+                placeholder="Labs (optional)"
+                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded"
+              />
             </div>
-          ) : (
-            <p className="text-zinc-600 dark:text-zinc-400">No hints yet.</p>
-          )}
+          ))}
         </div>
 
-        <div>
-          <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">
-            Student Progress ({Object.keys(studentSubmissions).length} students)
-          </h2>
-          
-          {Object.keys(studentSubmissions).length === 0 ? (
-            <p className="text-zinc-600 dark:text-zinc-400">No submissions yet.</p>
-          ) : (
-            <div className="space-y-6">
-              {Object.values(studentSubmissions).map((student) => (
-                <div key={student.email} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-medium text-zinc-900 dark:text-white">{student.name || 'Unknown'}</h3>
-                      <p className="text-sm text-zinc-500">{student.email}</p>
-                    </div>
-                    <span className="text-sm text-zinc-500">
-                      {student.submissions.length} submission{student.submissions.length !== 1 ? 's' : ''}
-                    </span>
-</div>
-                   
-                  <div className="space-y-2">
-                    {[...Array(hints.length || 7)].map((_, i) => {
-                      const hintNum = i + 1;
-                      const sub = student.submissions.find(s => s.submitted_after_hint === hintNum);
-                      return (
-                        <div key={hintNum} className="flex items-start gap-3 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-800/50">
-                          <span className="px-2 py-1 bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded font-medium min-w-[60px] text-center">
-                            Hint {hintNum}
-                          </span>
-                          {sub ? (
-                            <div className="flex-1">
-                              <span className="text-zinc-900 dark:text-zinc-200">{sub.diagnosis}</span>
-                              {sub.is_final && (
-                                <span className="ml-2 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-400 rounded">Final</span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-zinc-400 dark:text-zinc-500 italic">No diagnosis</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {error && <p className="text-red-500">{error}</p>}
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50"
+        >
+          {saving ? "Saving..." : "Save Hint Changes"}
+        </button>
       </main>
     </div>
   );

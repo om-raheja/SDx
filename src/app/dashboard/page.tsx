@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 
 interface User {
   id: string;
@@ -26,8 +26,8 @@ export default function Dashboard() {
 
   const fetchTeacherSubmissions = () => {
     fetch("/api/submissions")
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         if (Array.isArray(data)) {
           setTeacherSubmissions(data);
         }
@@ -36,7 +36,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    const isDark = localStorage.getItem("darkMode") === "true" || 
+    const isDark = localStorage.getItem("darkMode") === "true" ||
       (!localStorage.getItem("darkMode") && window.matchMedia('(prefers-color-scheme: dark)').matches);
     setDarkMode(isDark);
     if (isDark) {
@@ -46,25 +46,20 @@ export default function Dashboard() {
     Promise.all([
       fetch("/api/auth/me"),
       fetch("/api/cases"),
+      fetch("/api/auth/me/submissions"),
     ])
-      .then(([userRes, casesRes]) => Promise.all([userRes.json(), casesRes.json()]))
-      .then(([userData, casesData]) => {
+      .then(([userRes, casesRes, mySubRes]) => Promise.all([userRes.json(), casesRes.json(), mySubRes.json()]))
+      .then(([userData, casesData, mySubData]) => {
         if (userData.error) {
           router.push('/auth/signin');
           return;
         }
+
         const isTeacher = TEACHER_EMAILS.includes(userData.email);
         setUser({ id: userData.id, email: userData.email, name: userData.name });
         setCases(Array.isArray(casesData) ? casesData : []);
-        // Fetch user's past submissions
-        fetch("/api/auth/me/submissions")
-          .then(res => res.json())
-          .then(subData => {
-            if (Array.isArray(subData)) {
-              setUserSubmissions(subData);
-            }
-          })
-          .catch(() => {});
+        setUserSubmissions(Array.isArray(mySubData) ? mySubData : []);
+
         if (isTeacher) {
           fetchTeacherSubmissions();
         }
@@ -75,24 +70,24 @@ export default function Dashboard() {
 
   const loadComments = (submissionId: string) => {
     fetch(`/api/teacher-comments?submission_id=${submissionId}`)
-      .then(res => res.json())
-      .then(data => {
-        setComments(prev => ({ ...prev, [submissionId]: Array.isArray(data) ? data : [] }));
+      .then((res) => res.json())
+      .then((data) => {
+        setComments((prev) => ({ ...prev, [submissionId]: Array.isArray(data) ? data : [] }));
       });
   };
 
   useEffect(() => {
-    const submissionIds = Array.from(
-      new Set(
-        teacherSubmissions
-          .map((s: any) => s?.id)
-          .filter((id: string | undefined): id is string => Boolean(id))
-      )
-    );
+    const grouped: Record<string, any[]> = {};
+    teacherSubmissions.forEach((s: any) => {
+      const key = `${s.case_id}::${s.student_email || s.user_email || 'unknown'}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(s);
+    });
 
-    submissionIds.forEach((submissionId) => {
-      if (comments[submissionId] === undefined) {
-        loadComments(submissionId);
+    Object.values(grouped).forEach((groupSubs: any[]) => {
+      const primarySubmissionId = groupSubs[0]?.id;
+      if (primarySubmissionId && comments[primarySubmissionId] === undefined) {
+        loadComments(primarySubmissionId);
       }
     });
   }, [teacherSubmissions, comments]);
@@ -112,7 +107,7 @@ export default function Dashboard() {
   const submitComment = async (submissionId: string) => {
     const comment = newComment[submissionId];
     if (!comment?.trim()) {
-      setCommentError(prev => ({ ...prev, [submissionId]: 'Comment cannot be empty' }));
+      setCommentError((prev) => ({ ...prev, [submissionId]: 'Comment cannot be empty' }));
       return;
     }
 
@@ -123,9 +118,9 @@ export default function Dashboard() {
     });
 
     if (res.ok) {
-      setNewComment(prev => ({ ...prev, [submissionId]: '' }));
-      setCommentError(prev => ({ ...prev, [submissionId]: '' }));
-      setComments(prev => ({
+      setNewComment((prev) => ({ ...prev, [submissionId]: '' }));
+      setCommentError((prev) => ({ ...prev, [submissionId]: '' }));
+      setComments((prev) => ({
         ...prev,
         [submissionId]: [
           ...(prev[submissionId] || []),
@@ -142,7 +137,7 @@ export default function Dashboard() {
     }
 
     const data = await res.json();
-    setCommentError(prev => ({ ...prev, [submissionId]: data.error || 'Failed to add comment' }));
+    setCommentError((prev) => ({ ...prev, [submissionId]: data.error || 'Failed to add comment' }));
   };
 
   const deleteComment = async (commentId: string, submissionId: string) => {
@@ -150,30 +145,34 @@ export default function Dashboard() {
     loadComments(submissionId);
   };
 
-  const deleteSubmission = async (submissionId: string) => {
-    await fetch(`/api/submissions?submission_id=${submissionId}`, { method: 'DELETE' });
-    setComments(prev => {
+  const deleteStudentSubmissions = async (caseId: string, studentEmail: string, submissionIds: string[]) => {
+    await fetch(`/api/submissions?case_id=${encodeURIComponent(caseId)}&student_email=${encodeURIComponent(studentEmail)}`, {
+      method: 'DELETE'
+    });
+
+    setComments((prev) => {
       const next = { ...prev };
-      delete next[submissionId];
+      submissionIds.forEach((id) => delete next[id]);
       return next;
     });
-    setNewComment(prev => {
+    setNewComment((prev) => {
       const next = { ...prev };
-      delete next[submissionId];
+      submissionIds.forEach((id) => delete next[id]);
       return next;
     });
-    setCommentError(prev => {
+    setCommentError((prev) => {
       const next = { ...prev };
-      delete next[submissionId];
+      submissionIds.forEach((id) => delete next[id]);
       return next;
     });
+
     fetchTeacherSubmissions();
   };
 
   const deleteCase = async (caseId: string) => {
     await fetch(`/api/cases/${caseId}`, { method: "DELETE" });
-    setCases(prev => prev.filter(c => c.id !== caseId));
-    setTeacherSubmissions(prev => prev.filter(s => s.case_id !== caseId));
+    setCases((prev) => prev.filter((c) => c.id !== caseId));
+    setTeacherSubmissions((prev) => prev.filter((s) => s.case_id !== caseId));
   };
 
   if (loading || !user) {
@@ -182,203 +181,214 @@ export default function Dashboard() {
 
   const isTeacher = TEACHER_EMAILS.includes(user.email);
 
+  const getCaseSubmissionGroups = (caseId: string) => {
+    const caseSubs = teacherSubmissions.filter((s: any) => s.case_id === caseId);
+    const grouped = caseSubs.reduce((acc: Record<string, any>, s: any) => {
+      const email = s.student_email || s.user_email || 'unknown';
+      const key = `${email}-${caseId}`;
+      if (!acc[key]) {
+        acc[key] = {
+          email,
+          case_id: caseId,
+          submissions: [],
+          created_at: s.created_at,
+        };
+      }
+      acc[key].submissions.push(s);
+      if (new Date(s.created_at) > new Date(acc[key].created_at)) {
+        acc[key].created_at = s.created_at;
+      }
+      return acc;
+    }, {});
+
+    return Object.values(grouped);
+  };
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">SDx Lab {isTeacher && <span className="text-xs bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-2 py-0.5 rounded ml-2">Teacher</span>}</h1>
+        <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">
+          SDx Lab {isTeacher && <span className="text-xs bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-2 py-0.5 rounded ml-2">Teacher</span>}
+        </h1>
         <div className="flex items-center gap-4">
           <button
             onClick={toggleDarkMode}
             className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
           >
-            {darkMode ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            )}
+            {darkMode ? "☀️" : "🌙"}
           </button>
           <button onClick={handleSignOut} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 dark:text-white rounded-lg">
             Sign Out
           </button>
         </div>
       </header>
-      <main className="max-w-4xl mx-auto py-8 px-6">
+
+      <main className="max-w-5xl mx-auto py-8 px-6">
         <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Available Cases</h2>
         {isTeacher && (
           <button
             onClick={() => router.push('/teacher/create')}
             className="w-full mb-6 p-6 bg-white dark:bg-zinc-900 rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-zinc-900 dark:hover:border-zinc-400 flex items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
           >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
             <span className="text-lg font-medium">Create New Case</span>
           </button>
         )}
+
         {cases.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">No cases available yet.</p>
         ) : (
           <div className="grid gap-4">
-            {cases.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-center justify-between p-6 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
-              >
-                <div className="flex items-center gap-3 min-w-0">
+            {cases.map((c) => {
+              const groups = isTeacher ? getCaseSubmissionGroups(c.id) : [];
+
+              return (
+                <div key={c.id} className="rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900">
+                  <div className="flex items-center justify-between p-6">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {isTeacher && (
+                        <button
+                          onClick={() => deleteCase(c.id)}
+                          className="text-red-500 hover:text-red-600"
+                          title="Delete case"
+                          aria-label="Delete case"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      <span className="text-lg font-medium text-zinc-900 dark:text-white truncate">{c.title}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {isTeacher && (
+                        <button
+                          onClick={() => router.push(`/teacher/cases/${c.id}`)}
+                          className="text-zinc-700 dark:text-zinc-200 hover:text-zinc-900 dark:hover:text-white"
+                          aria-label={`Edit ${c.title}`}
+                          title="Edit case hints"
+                        >
+                          <Pencil className="w-5 h-5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => router.push(`/dashboard/${c.id}`)}
+                        className="text-zinc-800 dark:text-zinc-100 hover:text-black dark:hover:text-white"
+                        aria-label={`Preview ${c.title}`}
+                        title="Student preview"
+                      >
+                        <Eye className="w-7 h-7" />
+                      </button>
+                    </div>
+                  </div>
+
                   {isTeacher && (
-                    <button
-                      onClick={() => deleteCase(c.id)}
-                      className="text-red-500 hover:text-red-600"
-                      title="Delete case"
-                      aria-label="Delete case"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="px-6 py-5 bg-zinc-100 dark:bg-zinc-800/70 border-t border-zinc-200 dark:border-zinc-700">
+                      <p className="text-sm underline text-zinc-700 dark:text-zinc-200 mb-3">View submissions</p>
+                      {groups.length === 0 ? (
+                        <p className="text-zinc-600 dark:text-zinc-400 text-sm">No submissions yet.</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {groups.map((g: any) => {
+                            const primarySubmissionId = g.submissions[0]?.id;
+                            if (!primarySubmissionId) return null;
+
+                            return (
+                              <div key={`${g.email}-${g.case_id}`} className="p-4 bg-white/80 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                                <div className="flex justify-between items-start mb-3">
+                                  <div>
+                                    <h3 className="font-medium text-zinc-900 dark:text-white">{g.email}</h3>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{new Date(g.created_at).toLocaleString()}</span>
+                                    <button
+                                      onClick={() => deleteStudentSubmissions(g.case_id, g.email, g.submissions.map((s: any) => s.id))}
+                                      className="block ml-auto mt-1 text-red-500 hover:text-red-600"
+                                      title="Delete student submissions"
+                                      aria-label="Delete student submissions"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2 mb-4">
+                                  {(() => {
+                                    const hintCounts: Record<number, any> = {};
+                                    g.submissions.forEach((sub: any) => {
+                                      hintCounts[sub.submitted_after_hint] = sub;
+                                    });
+                                    const maxHint = Math.max(...Object.keys(hintCounts).map(Number), 2);
+                                    return [...Array(maxHint)].map((_, i) => {
+                                      const hintNum = i + 1;
+                                      const sub = hintCounts[hintNum];
+                                      return (
+                                        <div key={hintNum} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-800">
+                                          <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium">H{hintNum}</span>
+                                          <span className="text-zinc-700 dark:text-zinc-300">{sub ? sub.diagnosis : 'No diagnosis'}</span>
+                                        </div>
+                                      );
+                                    });
+                                  })()}
+                                </div>
+
+                                <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3">
+                                  <div className="space-y-2">
+                                    <p className="text-sm text-blue-600">Comments ({comments[primarySubmissionId]?.length || 0})</p>
+                                    {comments[primarySubmissionId]?.map((comment: any) => (
+                                      <div key={comment.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm flex justify-between items-start">
+                                        <div>
+                                          <span className="font-medium text-blue-700 dark:text-blue-300">{(comment.teacher_name || 'Teacher')}: </span>
+                                          <span className="text-zinc-700 dark:text-zinc-300">{comment.comment}</span>
+                                          <span className="block text-xs text-zinc-400 mt-1">
+                                            {comment.created_at ? new Date(comment.created_at).toLocaleString() : 'Just now'}
+                                          </span>
+                                        </div>
+                                        <button
+                                          onClick={() => deleteComment(comment.id, primarySubmissionId)}
+                                          className="text-red-500 hover:text-red-600 ml-2"
+                                          title="Delete comment"
+                                          aria-label="Delete comment"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="text"
+                                        placeholder="Write a comment..."
+                                        value={newComment[primarySubmissionId] || ''}
+                                        onChange={(e) => setNewComment((prev) => ({ ...prev, [primarySubmissionId]: e.target.value }))}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') submitComment(primarySubmissionId); }}
+                                        className="flex-1 px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                                      />
+                                      <button
+                                        onClick={() => submitComment(primarySubmissionId)}
+                                        className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg"
+                                      >
+                                        Send
+                                      </button>
+                                    </div>
+                                    {commentError[primarySubmissionId] && (
+                                      <p className="text-red-500 text-xs">{commentError[primarySubmissionId]}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   )}
-                  <button
-                    onClick={() => router.push(`/dashboard/${c.id}`)}
-                    className="text-left text-lg font-medium text-zinc-900 dark:text-white truncate"
-                  >
-                    {c.title}
-                  </button>
                 </div>
-                <button
-                  onClick={() => router.push(`/dashboard/${c.id}`)}
-                  className="text-zinc-500 dark:text-zinc-400"
-                  aria-label={`Open ${c.title}`}
-                >
-                  →
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
 
-      {isTeacher && (
-        <main className="max-w-4xl mx-auto py-8 px-6">
-          <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Student Submissions</h2>
-          {teacherSubmissions.length === 0 ? (
-            <p className="text-zinc-600 dark:text-zinc-400">No submissions yet.</p>
-          ) : (
-            <div className="space-y-6">
-              {(() => {
-                const grouped = teacherSubmissions.reduce((acc: Record<string, any>, s: any) => {
-                  const key = `${s.student_email || s.user_email || 'unknown'}-${s.case_id}`;
-                  if (!acc[key]) {
-                    acc[key] = { email: s.student_email || s.user_email || 'unknown', case_title: s.case_title || 'Unknown', case_id: s.case_id, submissions: [], created_at: s.created_at };
-                  }
-                  acc[key].submissions.push(s);
-                  return acc;
-                }, {});
-
-                return Object.values(grouped).map((g: any) => {
-                  const primarySubmissionId = g.submissions[0]?.id;
-                  if (!primarySubmissionId) return null;
-
-                  return (
-                    <div key={`${g.email}-${g.case_id}`} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="font-medium text-zinc-900 dark:text-white">{g.email}</h3>
-                          <p className="text-sm text-zinc-500">{g.case_title}</p>
-                        </div>
-                        <span className="text-xs text-zinc-400">{new Date(g.created_at).toLocaleString()}</span>
-                      </div>
-
-                      <div className="space-y-2 mb-4">
-                        {(() => {
-                          const hintCounts: Record<number, any> = {};
-                          g.submissions.forEach((sub: any) => {
-                            hintCounts[sub.submitted_after_hint] = sub;
-                          });
-                          const maxHint = Math.max(...Object.keys(hintCounts).map(Number), 2);
-                          return [...Array(maxHint)].map((_, i) => {
-                            const hintNum = i + 1;
-                            const sub = hintCounts[hintNum];
-                            return (
-                              <div key={hintNum} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-800">
-                                <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium">H{hintNum}</span>
-                                {sub ? (
-                                  <div className="flex-1 flex items-start justify-between gap-2">
-                                    <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis}</span>
-                                    <button
-                                      onClick={() => deleteSubmission(sub.id)}
-                                      className="inline-flex items-center gap-1 text-red-500 hover:text-red-600 text-xs"
-                                      title="Delete submission"
-                                      aria-label="Delete submission"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                      Delete
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span className="text-zinc-700 dark:text-zinc-300">No diagnosis</span>
-                                )}
-                              </div>
-                            );
-                          });
-                        })()}
-                      </div>
-
-                      <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3">
-                        <div className="space-y-2">
-                          <p className="text-sm text-blue-600">Comments ({comments[primarySubmissionId]?.length || 0})</p>
-                          {comments[primarySubmissionId]?.map((c: any) => (
-                            <div key={c.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm flex justify-between items-start">
-                              <div>
-                                <span className="font-medium text-blue-700 dark:text-blue-300">{(c.teacher_name || 'Teacher')}: </span>
-                                <span className="text-zinc-700 dark:text-zinc-300">{c.comment}</span>
-                                <span className="block text-xs text-zinc-400 mt-1">
-                                  {c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now'}
-                                </span>
-                              </div>
-                              <button
-                                onClick={() => deleteComment(c.id, primarySubmissionId)}
-                                className="text-red-500 hover:text-red-600 ml-2"
-                                title="Delete comment"
-                                aria-label="Delete comment"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ))}
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="Write a comment..."
-                              value={newComment[primarySubmissionId] || ''}
-                              onChange={(e) => setNewComment(prev => ({ ...prev, [primarySubmissionId]: e.target.value }))}
-                              onKeyDown={(e) => { if (e.key === 'Enter') submitComment(primarySubmissionId); }}
-                              className="flex-1 px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
-                            />
-                            <button
-                              onClick={() => submitComment(primarySubmissionId)}
-                              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg"
-                            >
-                              Send
-                            </button>
-                          </div>
-                          {commentError[primarySubmissionId] && (
-                            <p className="text-red-500 text-xs">{commentError[primarySubmissionId]}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-          )}
-        </main>
-      )}
-
       {userSubmissions.length > 0 && (
-        <main className="max-w-4xl mx-auto py-8 px-6">
+        <main className="max-w-5xl mx-auto py-8 px-6">
           <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Your Past Submissions</h2>
           {(() => {
             const grouped = userSubmissions.reduce((acc: Record<string, any>, s: any) => {
@@ -397,7 +407,7 @@ export default function Dashboard() {
               }
               return acc;
             }, {});
-            
+
             return (
               <div className="space-y-6">
                 {Object.values(grouped).map((g: any) => (
@@ -412,7 +422,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="grid grid-cols-1 gap-2">
-                      {[1,2,3,4,5,6,7].map(hintNum => {
+                      {[1, 2, 3, 4, 5, 6, 7].map((hintNum) => {
                         const sub = g.submissions.find((s: any) => s.submitted_after_hint === hintNum);
                         return (
                           <div key={hintNum} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-800">

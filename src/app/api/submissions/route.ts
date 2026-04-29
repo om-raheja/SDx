@@ -35,6 +35,46 @@ export async function DELETE(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const submissionId = searchParams.get('submission_id');
+    const caseId = searchParams.get('case_id');
+    const studentEmail = searchParams.get('student_email');
+
+    if (caseId && studentEmail) {
+      const idsResult = await pool.query(
+        `SELECT s.id
+         FROM submissions s
+         LEFT JOIN users u ON s.user_id = u.id
+         WHERE s.case_id = $1 AND COALESCE(u.email, s.email, 'Unknown') = $2`,
+        [caseId, studentEmail]
+      );
+
+      if (idsResult.rows.length === 0) {
+        return NextResponse.json({ error: 'Submission group not found' }, { status: 404 });
+      }
+
+      await pool.query(
+        `DELETE FROM teacher_comments
+         WHERE submission_id IN (
+           SELECT s.id
+           FROM submissions s
+           LEFT JOIN users u ON s.user_id = u.id
+           WHERE s.case_id = $1 AND COALESCE(u.email, s.email, 'Unknown') = $2
+         )`,
+        [caseId, studentEmail]
+      );
+
+      await pool.query(
+        `DELETE FROM submissions
+         WHERE case_id = $1
+           AND (
+             email = $2
+             OR user_id IN (SELECT id FROM users WHERE email = $2)
+           )`,
+        [caseId, studentEmail]
+      );
+
+      return NextResponse.json({ success: true, deleted: idsResult.rows.length });
+    }
+
     if (!submissionId) {
       return NextResponse.json({ error: 'Submission ID required' }, { status: 400 });
     }
