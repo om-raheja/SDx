@@ -13,7 +13,6 @@ export default function Teacher() {
   const [darkMode, setDarkMode] = useState(false);
   const [comments, setComments] = useState<Record<string, any[]>>({});
   const [newComment, setNewComment] = useState<Record<string, string>>({});
-  const [commentingOn, setCommentingOn] = useState<string | null>(null);
   const [commentError, setCommentError] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -61,6 +60,22 @@ export default function Teacher() {
         setComments(prev => ({ ...prev, [submissionId]: Array.isArray(data) ? data : [] }));
       });
   };
+
+  useEffect(() => {
+    const submissionIds = Array.from(
+      new Set(
+        submissions
+          .map((s: any) => s?.id)
+          .filter((id: string | undefined): id is string => Boolean(id))
+      )
+    );
+
+    submissionIds.forEach((submissionId) => {
+      if (comments[submissionId] === undefined) {
+        loadComments(submissionId);
+      }
+    });
+  }, [submissions, comments]);
 
   const submitComment = async (submissionId: string) => {
     const comment = newComment[submissionId];
@@ -156,7 +171,11 @@ export default function Teacher() {
                 return acc;
               }, {});
               
-              return Object.values(grouped).map((g: any) => (
+              return Object.values(grouped).map((g: any) => {
+                const primarySubmissionId = g.submissions[0]?.id;
+                if (!primarySubmissionId) return null;
+
+                return (
                 <div key={`${g.email}-${g.case_id}`} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
                   <div className="flex justify-between items-start mb-3">
                     <div>
@@ -188,23 +207,11 @@ export default function Teacher() {
 
                   {/* Teacher Comment Section */}
                   <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3">
-                    <button 
-                      onClick={() => {
-                        if (!comments[g.submissions[0]?.id]) {
-                          loadComments(g.submissions[0].id);
-                        }
-                        setCommentingOn(commentingOn === g.submissions[0].id ? null : g.submissions[0].id);
-                      }}
-                      className="text-sm text-blue-600 hover:text-blue-700 mb-2"
-                    >
-                      {comments[g.submissions[0]?.id]?.length > 0 
-                        ? `View Comments (${comments[g.submissions[0].id].length})` 
-                        : 'Add Comment'}
-                    </button>
-
-                    {commentingOn === g.submissions[0].id && (
-                      <div className="space-y-2">
-                        {comments[g.submissions[0].id]?.map((c: any) => (
+                    <div className="space-y-2">
+                        <p className="text-sm text-blue-600">
+                          Comments ({comments[primarySubmissionId]?.length || 0})
+                        </p>
+                        {comments[primarySubmissionId]?.map((c: any) => (
                           <div key={c.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm flex justify-between items-start">
                             <div>
                               <span className="font-medium text-blue-700 dark:text-blue-300">{(c.teacher_name || 'Teacher')}: </span>
@@ -214,7 +221,7 @@ export default function Teacher() {
                               </span>
                             </div>
                             <button 
-                              onClick={() => deleteComment(c.id, g.submissions[0].id)}
+                              onClick={() => deleteComment(c.id, primarySubmissionId)}
                               className="text-red-500 hover:text-red-600 text-xs ml-2"
                             >
                               Delete
@@ -225,26 +232,26 @@ export default function Teacher() {
                           <input
                             type="text"
                             placeholder="Write a comment..."
-                            value={newComment[g.submissions[0].id] || ''}
-                            onChange={(e) => setNewComment(prev => ({ ...prev, [g.submissions[0].id]: e.target.value }))}
-                            onKeyDown={(e) => { if (e.key === 'Enter') submitComment(g.submissions[0].id); }}
+                            value={newComment[primarySubmissionId] || ''}
+                            onChange={(e) => setNewComment(prev => ({ ...prev, [primarySubmissionId]: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') submitComment(primarySubmissionId); }}
                             className="flex-1 px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
                           />
                           <button 
-                            onClick={() => submitComment(g.submissions[0].id)}
+                            onClick={() => submitComment(primarySubmissionId)}
                             className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg"
                           >
                             Send
                           </button>
                         </div>
-                        {commentError[g.submissions[0].id] && (
-                          <p className="text-red-500 text-xs">{commentError[g.submissions[0].id]}</p>
+                        {commentError[primarySubmissionId] && (
+                          <p className="text-red-500 text-xs">{commentError[primarySubmissionId]}</p>
                         )}
-                      </div>
-                    )}
+                    </div>
                   </div>
                 </div>
-              ));
+                );
+              });
             })()}
           </div>
         )}

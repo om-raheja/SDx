@@ -3,21 +3,15 @@ import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
 
 async function ensureTables() {
-  try {
-    // Drop and recreate to fix schema
-    await pool.query(`DROP TABLE IF EXISTS teacher_comments CASCADE`);
-    await pool.query(`
-      CREATE TABLE teacher_comments (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        submission_id VARCHAR(255),
-        teacher_id VARCHAR(255),
-        comment TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-  } catch (e) {
-    console.error('ensureTables error:', e);
-  }
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS teacher_comments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      submission_id VARCHAR(255),
+      teacher_id VARCHAR(255),
+      comment TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
 }
 
 export async function POST(request: Request) {
@@ -58,6 +52,7 @@ export async function GET(request: Request) {
   }
 
   try {
+    await ensureTables();
     const result = await pool.query(
       'SELECT tc.*, tc.teacher_id as teacher_name FROM teacher_comments tc WHERE tc.submission_id = $1 ORDER BY tc.created_at ASC',
       [submission_id]
@@ -71,6 +66,7 @@ export async function GET(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    await ensureTables();
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
