@@ -82,13 +82,13 @@ export default function Teacher() {
     if (res.ok) {
       setNewComment(prev => ({ ...prev, [submissionId]: '' }));
       setCommentError(prev => ({ ...prev, [submissionId]: '' }));
-      // Add to local state immediately with teacher name
+      // Add to local state immediately
       setComments(prev => ({
         ...prev,
         [submissionId]: [...(prev[submissionId] || []), { 
           id: 'new-' + Date.now(), 
           comment, 
-          teacher_name: user?.name || user?.email?.split('@')[0] || 'Teacher',
+          teacher_name: 'Teacher',
           created_at: new Date().toISOString() 
         }]
       }));
