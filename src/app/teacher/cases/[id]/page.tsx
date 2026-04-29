@@ -140,8 +140,11 @@ export default function CaseDetail() {
                   </div>
                   
                   <div className="space-y-2">
-                    {[1, 2, 3, 4, 5, 6, 7].map((hintNum) => {
-                      const sub = student.submissions.find(s => s.submitted_after_hint === hintNum);
+                    {(() => {
+                      const hintCount = hints.length || 7;
+                      return [...Array(hintCount)].map((_, i) => {
+                        const hintNum = i + 1;
+                        const sub = student.submissions.find(s => s.submitted_after_hint === hintNum);
                       return (
                         <div key={hintNum} className="flex items-start gap-3 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-800/50">
                           <span className="px-2 py-1 bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 rounded font-medium min-w-[60px] text-center">

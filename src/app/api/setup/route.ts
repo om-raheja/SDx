@@ -37,6 +37,7 @@ export async function POST() {
       CREATE TABLE IF NOT EXISTS submissions (
         id UUID PRIMARY KEY,
         user_id VARCHAR(255),
+        email VARCHAR(255),
         case_id UUID REFERENCES cases(id),
         diagnosis TEXT,
         submitted_after_hint INT,

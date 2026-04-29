@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     
     // Get submissions for this case
     const submissionsResult = await pool.query(`
-      SELECT s.*, u.name as student_name, u.email as student_email
+      SELECT s.*, COALESCE(u.name, 'Unknown') as student_name, COALESCE(u.email, s.email, 'Unknown') as student_email
       FROM submissions s
       LEFT JOIN users u ON s.user_id = u.id
       WHERE s.case_id = $1

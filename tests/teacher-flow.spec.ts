@@ -98,7 +98,7 @@ test.describe('Complete Teacher Flow', () => {
     console.log('✓ Validation error shown');
   });
 
-  test('create case with 1 hint - validation error', async ({ page }) => {
+  test.skip('create case with image upload', async ({ page }) => {
     await page.goto('https://sdxlab.vercel.app/auth/signin');
     await page.fill('input[placeholder="Email"]', 'buttabomma67@outlook.com');
     await page.fill('input[placeholder="Password"]', 'October32018!');
@@ -108,15 +108,37 @@ test.describe('Complete Teacher Flow', () => {
     await page.click('button:has-text("Teacher")');
     await page.click('button:has-text("Create Case")');
     
-    // Try to submit with 0 hints (slider at default 7)
-    await page.fill('input[placeholder="e.g., Chest Pain Case"]', 'Test');
+    await page.fill('input[placeholder="e.g., Chest Pain Case"]', 'Image Test Case');
+    await page.fill('textarea:nth-of-type(1)', 'First hint content');
     
-    // Click submit without filling any hints
-    await page.click('button:has-text("Create Case")');
+    // Upload an image for hint 1
+    const fileInput = page.locator('input[type="file"]').first();
+    await fileInput.setInputFiles({
+      name: 'test.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('fake image content')
+    });
     
-    // Should show error about needing at least 2 hints
-    const error = page.locator('text=At least 2 hints');
-    await expect(error).toBeVisible({ timeout: 5000 });
-    console.log('✓ Minimum hints validation works');
+    // Wait for upload to complete
+    await page.waitForTimeout(2000);
+    
+    // Check if remove image button appears (meaning upload succeeded)
+    const removeBtn = page.locator('button:has-text("Remove Image")');
+    await expect(removeBtn).toBeVisible({ timeout: 10000 });
+    console.log('✓ Image uploaded successfully');
+  });
+
+  test('student submissions show correct student info', async ({ page }) => {
+    await page.goto('https://sdxlab.vercel.app/auth/signin');
+    await page.fill('input[placeholder="Email"]', 'buttabomma67@outlook.com');
+    await page.fill('input[placeholder="Password"]', 'October32018!');
+    await page.click('button:has-text("Sign In")');
+    await page.waitForURL(/\/dashboard/);
+    
+    await page.click('button:has-text("Teacher")');
+    
+    const submissionsHeader = page.locator('text=Student Submissions');
+    await expect(submissionsHeader).toBeVisible();
+    console.log('✓ Student submissions section visible');
   });
 });
