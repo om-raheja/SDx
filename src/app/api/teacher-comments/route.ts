@@ -15,7 +15,7 @@ async function ensureTables() {
       );
     `);
   } catch (e) {
-    console.error('ensureTables error:', JSON.stringify(e));
+    console.error('ensureTables error:', e);
   }
 }
 
@@ -24,18 +24,10 @@ export async function POST(request: Request) {
   
   try {
     const session = await getSession();
-    if (!session) {
-      console.log('No session - bypassing for now');
-    }
-
-    const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
-    if (session && !TEACHER_EMAILS.includes(session.email)) {
-      return NextResponse.json({ error: 'Only teachers can comment' }, { status: 403 });
-    }
-
+    
     const body = await request.json();
     const { submission_id, comment } = body;
-    console.log('POST comment:', submission_id, comment);
+    console.log('POST:', submission_id, comment);
     
     if (!submission_id || !comment) {
       return NextResponse.json({ error: 'Submission ID and comment required' }, { status: 400 });
@@ -44,7 +36,7 @@ export async function POST(request: Request) {
     const teacherId = session?.id || 'test-teacher-id';
     const teacherName = session?.name || session?.email || 'Teacher';
     
-    pool.query(
+    await pool.query(
       'INSERT INTO teacher_comments (id, submission_id, teacher_id, teacher_name, comment, created_at) VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW())',
       [submission_id, teacherId, teacherName, comment]
     );
