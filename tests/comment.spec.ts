@@ -11,15 +11,14 @@ test('comment works', async ({ page }) => {
   await page.waitForTimeout(3000);
   
   const btn = page.locator('button:has-text("Add Comment")').first();
-  if (await btn.isVisible()) {
-    await btn.click();
-    await page.waitForTimeout(500);
-    await page.locator('input[placeholder="Write a comment..."]').first().fill('Test comment');
-    await page.locator('button:has-text("Send")').first().click();
-    await page.waitForTimeout(2000);
-    
-    // Just verify no error
-    const hasError = await page.locator('.text-red-500, .text-red-600').count();
-    console.log('Has error:', hasError > 0 ? 'YES' : 'NO');
-  }
+  await btn.click();
+  await page.waitForTimeout(500);
+  await page.locator('input[placeholder="Write a comment..."]').first().fill('Test comment ' + Date.now());
+  await page.locator('button:has-text("Send")').first().click();
+  await page.waitForTimeout(2000);
+  
+  // Check for specific error about column
+  const pageText = await page.textContent('body');
+  const hasColumnError = pageText?.includes('column') && pageText?.includes('does not exist');
+  console.log('Column error:', hasColumnError ? 'YES' : 'NO');
 });
