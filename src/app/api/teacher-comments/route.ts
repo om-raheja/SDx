@@ -14,6 +14,8 @@ async function ensureTables() {
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
+    // Add column if missing
+    await pool.query(`ALTER TABLE teacher_comments ADD COLUMN IF NOT EXISTS teacher_name VARCHAR(255);`);
   } catch (e) {
     console.error('ensureTables error:', e);
   }
