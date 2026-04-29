@@ -37,8 +37,29 @@ export async function DELETE(request: Request) {
     const submissionId = searchParams.get('submission_id');
     const caseId = searchParams.get('case_id');
     const studentEmail = searchParams.get('student_email');
+    const studentUserId = searchParams.get('student_user_id');
 
-    if (caseId && studentEmail) {
+    if (caseId && (studentEmail || studentUserId)) {
+      if (studentUserId) {
+        const idsResult = await pool.query(
+          'SELECT id FROM submissions WHERE case_id = $1 AND user_id = $2',
+          [caseId, studentUserId]
+        );
+
+        if (idsResult.rows.length === 0) {
+          return NextResponse.json({ error: 'Submission group not found' }, { status: 404 });
+        }
+
+        await pool.query(
+          'DELETE FROM teacher_comments WHERE submission_id IN (SELECT id FROM submissions WHERE case_id = $1 AND user_id = $2)',
+          [caseId, studentUserId]
+        );
+
+        await pool.query('DELETE FROM submissions WHERE case_id = $1 AND user_id = $2', [caseId, studentUserId]);
+
+        return NextResponse.json({ success: true, deleted: idsResult.rows.length });
+      }
+
       const idsResult = await pool.query(
         `SELECT s.id
          FROM submissions s

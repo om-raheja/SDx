@@ -146,10 +146,17 @@ export default function Dashboard() {
     loadComments(submissionId);
   };
 
-  const deleteStudentSubmissions = async (caseId: string, studentEmail: string, submissionIds: string[]) => {
-    await fetch(`/api/submissions?case_id=${encodeURIComponent(caseId)}&student_email=${encodeURIComponent(studentEmail)}`, {
-      method: 'DELETE'
-    });
+  const deleteStudentSubmissions = async (
+    caseId: string,
+    studentEmail: string,
+    submissionIds: string[],
+    studentUserId?: string | null
+  ) => {
+    const query = studentUserId
+      ? `case_id=${encodeURIComponent(caseId)}&student_user_id=${encodeURIComponent(studentUserId)}`
+      : `case_id=${encodeURIComponent(caseId)}&student_email=${encodeURIComponent(studentEmail)}`;
+
+    await fetch(`/api/submissions?${query}`, { method: 'DELETE' });
 
     setComments((prev) => {
       const next = { ...prev };
@@ -185,11 +192,14 @@ export default function Dashboard() {
   const getCaseSubmissionGroups = (caseId: string) => {
     const caseSubs = teacherSubmissions.filter((s: any) => s.case_id === caseId);
     const grouped = caseSubs.reduce((acc: Record<string, any>, s: any) => {
-      const email = s.student_email || s.user_email || 'unknown';
-      const key = `${email}-${caseId}`;
+      const email = s.student_email || s.user_email || s.email || 'Unknown';
+      const studentUserId = s.user_id || null;
+      const studentKey = studentUserId || email || `unknown-${s.id}`;
+      const key = `${studentKey}-${caseId}`;
       if (!acc[key]) {
         acc[key] = {
           email,
+          student_user_id: studentUserId,
           case_id: caseId,
           submissions: [],
           created_at: s.created_at,
@@ -243,7 +253,7 @@ export default function Dashboard() {
             {cases.map((c) => {
               const groups = isTeacher ? getCaseSubmissionGroups(c.id) : [];
               const caseSubmissionCount = isTeacher
-                ? teacherSubmissions.filter((s: any) => s.case_id === c.id).length
+                ? groups.length
                 : 0;
 
               return (
@@ -320,7 +330,14 @@ export default function Dashboard() {
                                     <div className="text-right">
                                       <span className="text-xs text-zinc-500 dark:text-zinc-400">{new Date(g.created_at).toLocaleString()}</span>
                                       <button
-                                        onClick={() => deleteStudentSubmissions(g.case_id, g.email, g.submissions.map((s: any) => s.id))}
+                                        onClick={() =>
+                                          deleteStudentSubmissions(
+                                            g.case_id,
+                                            g.email,
+                                            g.submissions.map((s: any) => s.id),
+                                            g.student_user_id
+                                          )
+                                        }
                                         className="block ml-auto mt-1 text-red-500 hover:text-red-600"
                                         title="Delete student submissions"
                                         aria-label="Delete student submissions"
