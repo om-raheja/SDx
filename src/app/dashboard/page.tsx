@@ -152,11 +152,8 @@ export default function Dashboard() {
     submissionIds: string[],
     studentUserId?: string | null
   ) => {
-    const query = studentUserId
-      ? `case_id=${encodeURIComponent(caseId)}&student_user_id=${encodeURIComponent(studentUserId)}`
-      : `case_id=${encodeURIComponent(caseId)}&student_email=${encodeURIComponent(studentEmail)}`;
-
-    await fetch(`/api/submissions?${query}`, { method: 'DELETE' });
+    // Always use email as the key for deletion to match grouping logic
+    await fetch(`/api/submissions?case_id=${encodeURIComponent(caseId)}&student_email=${encodeURIComponent(studentEmail)}`, { method: 'DELETE' });
 
     setComments((prev) => {
       const next = { ...prev };
@@ -192,14 +189,13 @@ export default function Dashboard() {
   const getCaseSubmissionGroups = (caseId: string) => {
     const caseSubs = teacherSubmissions.filter((s: any) => s.case_id === caseId);
     const grouped = caseSubs.reduce((acc: Record<string, any>, s: any) => {
+      // Always use email as the primary grouping key for consistency
       const email = s.student_email || s.user_email || s.email || 'Unknown';
-      const studentUserId = s.user_id || null;
-      const studentKey = studentUserId || email || `unknown-${s.id}`;
-      const key = `${studentKey}-${caseId}`;
+      const key = `${email}-${caseId}`;
       if (!acc[key]) {
         acc[key] = {
           email,
-          student_user_id: studentUserId,
+          student_user_id: s.user_id || null,
           case_id: caseId,
           submissions: [],
           created_at: s.created_at,
@@ -251,10 +247,10 @@ export default function Dashboard() {
         ) : (
           <div className="grid gap-4">
             {cases.map((c) => {
-              const groups = isTeacher ? getCaseSubmissionGroups(c.id) : [];
-              const caseSubmissionCount = isTeacher
-                ? groups.length
-                : 0;
+               const groups = isTeacher ? getCaseSubmissionGroups(c.id) : [];
+               const caseSubmissionCount = isTeacher
+                 ? groups.reduce((total, group) => total + group.submissions.length, 0)
+                 : 0;
 
               return (
                 <div key={c.id} className="rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900">
