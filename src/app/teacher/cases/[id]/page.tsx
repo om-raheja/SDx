@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { Pencil } from "lucide-react";
 
 interface HintData {
   content: string;
@@ -18,6 +19,7 @@ export default function EditCaseHints() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editingImageUrl, setEditingImageUrl] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     if (!id) return;
@@ -120,13 +122,32 @@ export default function EditCaseHints() {
                 placeholder="Hint content"
                 className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded mb-2"
               />
-              <input
-                type="text"
-                value={hint.imageUrl}
-                onChange={(e) => updateHint(index, "imageUrl", e.target.value)}
-                placeholder="Image URL (optional)"
-                className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded mb-2"
-              />
+              {hint.imageUrl && !editingImageUrl[index] ? (
+                <div className="relative mb-2">
+                  <img
+                    src={`/api/image?url=${encodeURIComponent(hint.imageUrl)}`}
+                    alt={`Hint ${index + 1}`}
+                    className="w-full max-h-56 object-contain rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800"
+                  />
+                  <button
+                    onClick={() => setEditingImageUrl((prev) => ({ ...prev, [index]: true }))}
+                    className="absolute top-2 right-2 p-1.5 rounded bg-black/60 text-white hover:bg-black/70"
+                    title="Edit image URL"
+                    aria-label="Edit image URL"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  value={hint.imageUrl}
+                  onChange={(e) => updateHint(index, "imageUrl", e.target.value)}
+                  onBlur={() => setEditingImageUrl((prev) => ({ ...prev, [index]: false }))}
+                  placeholder="Image URL (optional)"
+                  className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded mb-2"
+                />
+              )}
               <textarea
                 value={hint.labs}
                 onChange={(e) => updateHint(index, "labs", e.target.value)}
