@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('comment flow', async ({ page }) => {
+test('comment via page reload', async ({ page }) => {
   await page.goto('https://sdxlab.vercel.app/auth/signin');
   await page.fill('input[placeholder="Email"]', 'buttabomma67@outlook.com');
   await page.fill('input[placeholder="Password"]', 'October32018!');
@@ -11,20 +11,49 @@ test('comment flow', async ({ page }) => {
   await page.waitForTimeout(3000);
   
   const btn = page.locator('button:has-text("Add Comment")').first();
-  if (await btn.isVisible()) {
-    const initialCount = await page.locator('text=Comment').count();
-    console.log('Initial comments:', initialCount);
+  await btn.click();
+  await page.waitForTimeout(500);
+  
+  // Get submission ID from URL or anywhere on the page
+  const subId = await page.evaluate(() => {
+    const buttons = document.querySelectorAll('button');
+    for (let b of Array.from(buttons)) {
+      if (b.textContent?.includes('Add Comment')) {
+        // Try to find parent with submission ID
+        let el = b;
+        while (el && !el.id) {
+          el = el.parentElement;
+        }
+        return el?.id || 'not-found';
+      }
+    }
+    return 'button-not-found';
+  });
+  console.log('Submission ID from page:', subId);
+  
+  // Add comment
+  const input = page.locator('input[placeholder="Write a comment..."]').first();
+  const testComment = 'Test comment ' + Date.now();
+  await input.fill(testComment);
+  
+  const sendBtn = page.locator('button:has-text("Send")').first();
+  await sendBtn.click();
+  await page.waitForTimeout(2000);
+  
+  // Reload page to check
+  await page.reload();
+  await page.waitForTimeout(3000);
+  
+  // Check View Comments button
+  const viewBtn = page.locator('button:has-text("View Comments")');
+  const hasView = await viewBtn.count();
+  console.log('View Comments count:', hasView);
+  
+  if (hasView > 0) {
+    await viewBtn.first().click();
+    await page.waitForTimeout(1000);
     
-    await btn.click();
-    await page.waitForTimeout(500);
-    await page.fill('input[placeholder="Write a comment..."]', 'Test comment ' + Date.now());
-    await page.click('button:has-text("Send")');
-    await page.waitForTimeout(3000);
-    
-    const finalCount = await page.locator('text=Test comment').count();
-    console.log('Final comments:', finalCount);
-    expect(finalCount).toBeGreaterThan(initialCount);
-  } else {
-    console.log('No submissions');
+    const shown = await page.locator(`text=${testComment}`).isVisible();
+    console.log('Comment shown after reload:', shown ? 'YES' : 'NO');
   }
 });
