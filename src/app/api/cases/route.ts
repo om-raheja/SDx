@@ -23,17 +23,20 @@ export async function POST(request: Request) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { title, hints } = await request.json();
-    if (!title || !hints || hints.length !== 7) {
-      return NextResponse.json({ error: 'Title and 7 hints required' }, { status: 400 });
+    if (!title) {
+      return NextResponse.json({ error: 'Title required' }, { status: 400 });
+    }
+    if (!hints || hints.length < 2 || hints.length > 20) {
+      return NextResponse.json({ error: 'Need between 2-20 hints' }, { status: 400 });
     }
 
     const caseId = uuidv4();
     await pool.query('INSERT INTO cases (id, title, created_by, created_at) VALUES ($1, $2, $3, NOW())', 
       [caseId, title, session.id]);
 
-    for (const hint of hints) {
+for (const hint of hints) {
       await pool.query('INSERT INTO hints (id, case_id, hint_order, content, image_url, labs) VALUES ($1, $2, $3, $4, $5, $6)', 
-        [uuidv4(), caseId, hint.hint_order, hint.content, hint.image_url || null, hint.labs || null]);
+        [uuidv4(), caseId, hint.hint_order, hint.content, hint.imageUrl || null, hint.labs || null]);
     }
 
     return NextResponse.json({ success: true, caseId });

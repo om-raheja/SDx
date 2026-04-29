@@ -11,7 +11,19 @@ export async function GET() {
     const email = session.email;
     
     const result = await pool.query(
-      "SELECT s.*, c.title as case_title FROM submissions s LEFT JOIN cases c ON s.case_id = c.id WHERE s.user_id = $1 OR s.email = $2 ORDER BY s.created_at DESC",
+      `SELECT s.*, c.title as case_title, 
+       COALESCE(
+         json_agg(
+           json_build_object('id', tc.id, 'comment', tc.comment, 'created_at', tc.created_at)
+         ) FILTER (WHERE tc.id IS NOT NULL), 
+         '[]'::json
+       ) as teacher_comments
+       FROM submissions s 
+       LEFT JOIN cases c ON s.case_id = c.id
+       LEFT JOIN teacher_comments tc ON tc.submission_id = s.id
+       WHERE s.user_id = $1 OR s.email = $2
+       GROUP BY s.id, c.title
+       ORDER BY s.created_at DESC`,
       [userId, email]
     );
     

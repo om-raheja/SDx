@@ -33,8 +33,8 @@ export default function Dashboard() {
     ])
       .then(([userRes, casesRes]) => Promise.all([userRes.json(), casesRes.json()]))
       .then(([userData, casesData]) => {
-        if (userData.error || !userData.role) {
-          if (userData.error) router.push('/auth/signin');
+        if (userData.error) {
+          router.push('/auth/signin');
           return;
         }
         setUser({ id: userData.id, email: userData.email, name: userData.name });
@@ -177,7 +177,17 @@ export default function Dashboard() {
                               H{hintNum}
                             </span>
                             {sub ? (
-                              <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis}</span>
+                              <div className="flex-1">
+                                <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis}</span>
+                                {sub.teacher_comments?.length > 0 && (
+                                  <div className="mt-1 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs">
+                                    <span className="text-blue-600 dark:text-blue-400 font-medium">Teacher feedback:</span>
+                                    {sub.teacher_comments.map((c: any) => (
+                                      <p key={c.id} className="text-blue-700 dark:text-blue-300">{c.comment}</p>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-zinc-400 italic">pending</span>
                             )}

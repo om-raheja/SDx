@@ -45,6 +45,16 @@ export async function POST() {
       );
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS teacher_comments (
+        id UUID PRIMARY KEY,
+        submission_id UUID REFERENCES submissions(id),
+        teacher_id VARCHAR(255),
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
     return NextResponse.json({ success: true, message: 'Tables created' });
   } catch (err) {
     console.error('Setup error:', err);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface HintData {
@@ -11,6 +11,7 @@ interface HintData {
 export default function CreateCase() {
   const router = useRouter();
   const [title, setTitle] = useState("");
+  const [hintCount, setHintCount] = useState(7);
   const [hints, setHints] = useState<HintData[]>(
     Array(7).fill(null).map(() => ({ content: "", imageUrl: "" }))
   );
@@ -18,6 +19,19 @@ export default function CreateCase() {
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState<{index: number}[]>([]);
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    const newHints = Array(hintCount).fill(null).map((_, i) => ({
+      content: hints[i]?.content || "",
+      imageUrl: hints[i]?.imageUrl || "",
+    }));
+    setHints(newHints);
+  }, [hintCount]);
+
+  const handleHintCountChange = (value: number) => {
+    const count = Math.max(2, Math.min(20, value));
+    setHintCount(count);
+  };
 
   const handleFileInputRef = (index: number, el: HTMLInputElement | null) => {
     fileInputRefs.current[index] = el;
@@ -48,162 +62,173 @@ export default function CreateCase() {
         newHints[index].imageUrl = data.url;
         setHints(newHints);
       } else {
-        setError('Failed to upload image');
+        setError('Upload failed');
       }
     } catch {
       setError('Upload failed');
-    } finally {
-      setUploading(uploading.filter(u => u.index !== index));
     }
+    setUploading(uploading.filter(u => u.index !== index));
   };
 
-  const handleRemoveImage = (index: number) => {
+  const handleImageRemove = (index: number) => {
     const newHints = [...hints];
     newHints[index].imageUrl = "";
     setHints(newHints);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    
+  const handleSubmit = async () => {
     if (!title.trim()) {
-      setError("Please enter a case title");
+      setError('Title required');
       return;
     }
     
-    const emptyHints = hints.filter(h => !h.content.trim());
-    if (emptyHints.length > 0) {
-      setError(`Please fill in all 7 hints (${emptyHints.length} empty)`);
+    const validHints = hints.filter(h => h.content.trim() || h.imageUrl);
+    if (validHints.length < 2) {
+      setError('At least 2 hints with content required');
+      return;
+    }
+
+    if (validHints.length !== hintCount) {
+      setError(`Please fill in all ${hintCount} hints`);
       return;
     }
 
     setSubmitting(true);
+    setError('');
+
     try {
-      const res = await fetch("/api/cases", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/cases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(),
-          hints: hints.map((h, idx) => ({
-            hint_order: idx + 1,
-            content: h.content.trim(),
-            image_url: h.imageUrl || null,
+          hints: hints.map((h, i) => ({
+            hint_order: i + 1,
+            content: h.content,
+            imageUrl: h.imageUrl,
           })),
         }),
       });
-      
+
       if (res.ok) {
-        router.push("/teacher");
+        router.push('/teacher');
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to create case");
+        setError(data.error || 'Failed to create case');
       }
     } catch {
-      setError("Failed to create case");
-    } finally {
-      setSubmitting(false);
+      setError('Failed to create case');
     }
+    setSubmitting(false);
   };
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
-        <button onClick={() => router.push("/teacher")} className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
-          ← Back
-        </button>
+      <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 header-accent">
         <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">Create Case</h1>
-        <div className="w-20" />
+        <button onClick={() => router.push('/teacher')} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 dark:text-white rounded-lg">
+          Back
+        </button>
       </header>
-      
-      <main className="max-w-2xl mx-auto py-8 px-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              Case Title (Diagnosis)
-            </label>
+
+      <main className="max-w-2xl mx-auto py-8 px-6 space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            Case Title
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g., Chest Pain Case"
+            className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            Number of Hint Bundles
+          </label>
+          <div className="flex items-center gap-4">
             <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Pneumonia"
-              className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg"
+              type="range"
+              min="2"
+              max="20"
+              value={hintCount}
+              onChange={(e) => handleHintCountChange(parseInt(e.target.value))}
+              className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer"
+            />
+            <input
+              type="number"
+              min="2"
+              max="20"
+              value={hintCount}
+              onChange={(e) => handleHintCountChange(parseInt(e.target.value) || 2)}
+              className="w-16 px-3 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg text-center"
             />
           </div>
+          <p className="text-sm text-zinc-500 mt-1">Choose between 2-20 hint bundles</p>
+        </div>
 
-          <div className="space-y-6">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">7 Progressive Hints</h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Add text or an image (or both) for each hint. At least one is required.
-            </p>
-            
-            {hints.map((hint, idx) => (
-              <div key={idx} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  Hint {idx + 1}
-                </label>
-                
-                <textarea
-                  value={hint.content}
-                  onChange={(e) => handleContentChange(idx, e.target.value)}
-                  placeholder={`Text for hint ${idx + 1}...`}
-                  rows={3}
-                  className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg mb-3"
-                />
-                
-                <div className="flex items-center gap-3">
-                  <input
-                    ref={(el) => handleFileInputRef(idx, el)}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(idx, file);
-                    }}
-                    className="hidden"
-                  />
+        <div className="space-y-4">
+          <h2 className="text-lg font-medium text-zinc-900 dark:text-white">Hints</h2>
+          {hints.map((hint, index) => (
+            <div key={index} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 card-accent">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Hint {index + 1}</span>
+                {hint.imageUrl && (
                   <button
                     type="button"
-                    onClick={() => fileInputRefs.current[idx]?.click()}
-                    disabled={uploading.some(u => u.index === idx)}
-                    className="px-4 py-2 text-sm border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50"
+                    onClick={() => handleImageRemove(index)}
+                    className="text-sm text-red-600 hover:text-red-700"
                   >
-                    {uploading.some(u => u.index === idx) ? "Uploading..." : "Add Image"}
+                    Remove Image
                   </button>
-                  
-                  {hint.imageUrl && (
-                    <div className="relative">
-                      <img src={hint.imageUrl} alt={`Hint ${idx + 1}`} className="h-20 w-auto rounded border" />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(idx)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                </div>
-                
-                {hint.imageUrl && (
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">Image attached</p>
                 )}
               </div>
-            ))}
-          </div>
+              <textarea
+                value={hint.content}
+                onChange={(e) => handleContentChange(index, e.target.value)}
+                placeholder="Enter hint content..."
+                rows={3}
+                className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg mb-2"
+              />
+              <input
+                type="file"
+                accept="image/*"
+                ref={(el) => handleFileInputRef(index, el)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageUpload(index, file);
+                }}
+                className="hidden"
+              />
+              {!hint.imageUrl && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRefs.current[index]?.click()}
+                  disabled={uploading.some(u => u.index === index)}
+                  className="text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                >
+                  {uploading.some(u => u.index === index) ? "Uploading..." : "Add Image"}
+                </button>
+              )}
+              {hint.imageUrl && (
+                <img src={hint.imageUrl} alt={`Hint ${index + 1}`} className="mt-2 max-h-40 rounded-lg" />
+              )}
+            </div>
+          ))}
+        </div>
 
-          {error && (
-            <p className="text-red-500 dark:text-red-400">{error}</p>
-          )}
+        {error && <p className="text-red-500">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={submitting || uploading.length > 0}
-            className="w-full px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-medium disabled:opacity-50"
-          >
-            {submitting ? "Creating..." : "Create Case"}
-          </button>
-        </form>
+        <button
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50"
+        >
+          {submitting ? "Creating..." : "Create Case"}
+        </button>
       </main>
     </div>
   );
