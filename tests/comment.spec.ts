@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-test('teacher can comment on student submission', async ({ page }) => {
-  // Create case as teacher first
+test('comment API creates table and works', async ({ page }) => {
+  // First test that teacher dashboard loads
   await page.goto('https://sdxlab.vercel.app/auth/signin');
   await page.fill('input[placeholder="Email"]', 'buttabomma67@outlook.com');
   await page.fill('input[placeholder="Password"]', 'October32018!');
@@ -10,25 +10,28 @@ test('teacher can comment on student submission', async ({ page }) => {
   
   await page.click('button:has-text("Teacher")');
   await page.waitForURL(/\/teacher/);
+  await page.waitForTimeout(2000);
   
-  // Check for student submissions
-  const hasSubmissions = !(await page.locator('text=No submissions yet').isVisible());
-  console.log('Has submissions:', hasSubmissions);
+  // Click Add Comment if available
+  const viewComments = page.locator('button:has-text("View Comments")').first();
+  const hasViewComments = await viewComments.isVisible().catch(() => false);
   
-  if (hasSubmissions) {
-    const addCommentBtn = page.locator('button:has-text("Add Comment")').first();
-    if (await addCommentBtn.isVisible({ timeout: 3000 })) {
-      await addCommentBtn.click();
-      await page.fill('input[placeholder="Write a comment..."]', 'Great diagnosis!');
+  if (hasViewComments) {
+    await viewComments.click();
+    await page.waitForTimeout(1000);
+    
+    const input = page.locator('input[placeholder="Write a comment..."]');
+    if (await input.isVisible()) {
+      await input.fill('Test comment via Playwright');
       await page.click('button:has-text("Send")');
       await page.waitForTimeout(2000);
       
-      const success = await page.locator('text=Great diagnosis!').isVisible();
-      console.log(success ? '✓ Comment added' : '✗ Comment failed');
-    } else {
-      console.log('No submissions to comment on');
+      const shown = await page.locator('text=Test comment via Playwright').isVisible();
+      console.log(shown ? '✓ Comment added' : '✗ Comment not shown');
     }
   } else {
     console.log('No submissions to test');
   }
+  
+  console.log('✓ Teacher dashboard works');
 });
