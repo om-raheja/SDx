@@ -33,10 +33,11 @@ export async function POST(request: Request) {
     }
 
     const teacherId = session?.id || 'test-teacher-id';
+    const teacherEmail = session?.email || 'test@teacher.com';
     
     await pool.query(
       'INSERT INTO teacher_comments (id, submission_id, teacher_id, comment, created_at) VALUES (gen_random_uuid(), $1, $2, $3, NOW())',
-      [submission_id, teacherId, comment]
+      [submission_id, teacherEmail, comment]
     );
 
     return NextResponse.json({ success: true });
