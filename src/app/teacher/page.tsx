@@ -82,7 +82,17 @@ export default function Teacher() {
     if (res.ok) {
       setNewComment(prev => ({ ...prev, [submissionId]: '' }));
       setCommentError(prev => ({ ...prev, [submissionId]: '' }));
-      // Reload comments
+      // Add to local state immediately with teacher name
+      setComments(prev => ({
+        ...prev,
+        [submissionId]: [...(prev[submissionId] || []), { 
+          id: 'new-' + Date.now(), 
+          comment, 
+          teacher_name: 'Teacher',
+          created_at: new Date().toISOString() 
+        }]
+      }));
+      // Also reload from server
       loadComments(submissionId);
     } else {
       const data = await res.json();
