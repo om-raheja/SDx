@@ -344,23 +344,21 @@ export default function Dashboard() {
                                   </div>
 
                                   <div className="space-y-2 mb-4">
-                                    {(() => {
-                                      const hintCounts: Record<number, any> = {};
-                                      g.submissions.forEach((sub: any) => {
-                                        hintCounts[sub.submitted_after_hint] = sub;
-                                      });
-                                      const maxHint = Math.max(...Object.keys(hintCounts).map(Number), 2);
-                                      return [...Array(maxHint)].map((_, i) => {
-                                        const hintNum = i + 1;
-                                        const sub = hintCounts[hintNum];
-                                        return (
-                                          <div key={hintNum} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-100 dark:bg-zinc-800">
-                                            <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium">H{hintNum}</span>
-                                            <span className="text-zinc-700 dark:text-zinc-300">{sub ? sub.diagnosis : 'No diagnosis'}</span>
+                                    {g.submissions
+                                      .sort((a: any, b: any) => (a.submitted_after_hint || 0) - (b.submitted_after_hint || 0))
+                                      .map((sub: any, index: number) => (
+                                        <div key={sub.id || index} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-100 dark:bg-zinc-800">
+                                          <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium">
+                                            H{sub.submitted_after_hint || '?'}
+                                          </span>
+                                          <div className="flex-1">
+                                            <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis || 'No diagnosis'}</span>
+                                            <span className="block text-xs text-zinc-400 mt-1">
+                                              {sub.created_at ? new Date(sub.created_at).toLocaleString() : 'Unknown time'}
+                                            </span>
                                           </div>
-                                        );
-                                      });
-                                    })()}
+                                        </div>
+                                      ))}
                                   </div>
 
                                   <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3">
