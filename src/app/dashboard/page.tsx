@@ -16,6 +16,10 @@ export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [cases, setCases] = useState<any[]>([]);
   const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
+  const [teacherSubmissions, setTeacherSubmissions] = useState<any[]>([]);
+  const [comments, setComments] = useState<Record<string, any[]>>({});
+  const [newComment, setNewComment] = useState<Record<string, string>>({});
+  const [commentError, setCommentError] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
@@ -37,6 +41,7 @@ export default function Dashboard() {
           router.push('/auth/signin');
           return;
         }
+        const isTeacher = TEACHER_EMAILS.includes(userData.email);
         setUser({ id: userData.id, email: userData.email, name: userData.name });
         setCases(Array.isArray(casesData) ? casesData : []);
         // Fetch user's past submissions
@@ -48,10 +53,44 @@ export default function Dashboard() {
             }
           })
           .catch(() => {});
+        if (isTeacher) {
+          fetch("/api/submissions")
+            .then(res => res.json())
+            .then(data => {
+              if (Array.isArray(data)) {
+                setTeacherSubmissions(data);
+              }
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => router.push('/auth/signin'))
       .finally(() => setLoading(false));
   }, [router]);
+
+  const loadComments = (submissionId: string) => {
+    fetch(`/api/teacher-comments?submission_id=${submissionId}`)
+      .then(res => res.json())
+      .then(data => {
+        setComments(prev => ({ ...prev, [submissionId]: Array.isArray(data) ? data : [] }));
+      });
+  };
+
+  useEffect(() => {
+    const submissionIds = Array.from(
+      new Set(
+        teacherSubmissions
+          .map((s: any) => s?.id)
+          .filter((id: string | undefined): id is string => Boolean(id))
+      )
+    );
+
+    submissionIds.forEach((submissionId) => {
+      if (comments[submissionId] === undefined) {
+        loadComments(submissionId);
+      }
+    });
+  }, [teacherSubmissions, comments]);
 
   const toggleDarkMode = () => {
     const newMode = !darkMode;
@@ -63,6 +102,47 @@ export default function Dashboard() {
   const handleSignOut = async () => {
     await fetch("/api/auth/signout", { method: "POST" });
     router.push('/auth/signin');
+  };
+
+  const submitComment = async (submissionId: string) => {
+    const comment = newComment[submissionId];
+    if (!comment?.trim()) {
+      setCommentError(prev => ({ ...prev, [submissionId]: 'Comment cannot be empty' }));
+      return;
+    }
+
+    const res = await fetch("/api/teacher-comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ submission_id: submissionId, comment }),
+    });
+
+    if (res.ok) {
+      setNewComment(prev => ({ ...prev, [submissionId]: '' }));
+      setCommentError(prev => ({ ...prev, [submissionId]: '' }));
+      setComments(prev => ({
+        ...prev,
+        [submissionId]: [
+          ...(prev[submissionId] || []),
+          {
+            id: 'new-' + Date.now(),
+            comment,
+            teacher_name: user?.email?.split('@')[0] || 'Teacher',
+            created_at: new Date().toISOString()
+          }
+        ]
+      }));
+      loadComments(submissionId);
+      return;
+    }
+
+    const data = await res.json();
+    setCommentError(prev => ({ ...prev, [submissionId]: data.error || 'Failed to add comment' }));
+  };
+
+  const deleteComment = async (commentId: string, submissionId: string) => {
+    await fetch(`/api/teacher-comments?comment_id=${commentId}`, { method: 'DELETE' });
+    loadComments(submissionId);
   };
 
   if (loading || !user) {
@@ -90,14 +170,6 @@ export default function Dashboard() {
               </svg>
             )}
           </button>
-          {isTeacher && (
-            <button 
-              onClick={() => router.push('/teacher')}
-              className="px-4 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg"
-            >
-              Teacher
-            </button>
-          )}
           <button onClick={handleSignOut} className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 dark:text-white rounded-lg">
             Sign Out
           </button>
@@ -133,6 +205,107 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      {isTeacher && (
+        <main className="max-w-4xl mx-auto py-8 px-6">
+          <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Student Submissions</h2>
+          {teacherSubmissions.length === 0 ? (
+            <p className="text-zinc-600 dark:text-zinc-400">No submissions yet.</p>
+          ) : (
+            <div className="space-y-6">
+              {(() => {
+                const grouped = teacherSubmissions.reduce((acc: Record<string, any>, s: any) => {
+                  const key = `${s.student_email || s.user_email || 'unknown'}-${s.case_id}`;
+                  if (!acc[key]) {
+                    acc[key] = { email: s.student_email || s.user_email || 'unknown', case_title: s.case_title || 'Unknown', case_id: s.case_id, submissions: [], created_at: s.created_at };
+                  }
+                  acc[key].submissions.push(s);
+                  return acc;
+                }, {});
+
+                return Object.values(grouped).map((g: any) => {
+                  const primarySubmissionId = g.submissions[0]?.id;
+                  if (!primarySubmissionId) return null;
+
+                  return (
+                    <div key={`${g.email}-${g.case_id}`} className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-medium text-zinc-900 dark:text-white">{g.email}</h3>
+                          <p className="text-sm text-zinc-500">{g.case_title}</p>
+                        </div>
+                        <span className="text-xs text-zinc-400">{new Date(g.created_at).toLocaleString()}</span>
+                      </div>
+
+                      <div className="space-y-2 mb-4">
+                        {(() => {
+                          const hintCounts: Record<number, any> = {};
+                          g.submissions.forEach((sub: any) => {
+                            hintCounts[sub.submitted_after_hint] = sub;
+                          });
+                          const maxHint = Math.max(...Object.keys(hintCounts).map(Number), 2);
+                          return [...Array(maxHint)].map((_, i) => {
+                            const hintNum = i + 1;
+                            const sub = hintCounts[hintNum];
+                            return (
+                              <div key={hintNum} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-800">
+                                <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium">H{hintNum}</span>
+                                <span className="text-zinc-700 dark:text-zinc-300">{sub ? sub.diagnosis : 'No diagnosis'}</span>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+
+                      <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3">
+                        <div className="space-y-2">
+                          <p className="text-sm text-blue-600">Comments ({comments[primarySubmissionId]?.length || 0})</p>
+                          {comments[primarySubmissionId]?.map((c: any) => (
+                            <div key={c.id} className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm flex justify-between items-start">
+                              <div>
+                                <span className="font-medium text-blue-700 dark:text-blue-300">{(c.teacher_name || 'Teacher')}: </span>
+                                <span className="text-zinc-700 dark:text-zinc-300">{c.comment}</span>
+                                <span className="block text-xs text-zinc-400 mt-1">
+                                  {c.created_at ? new Date(c.created_at).toLocaleString() : 'Just now'}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => deleteComment(c.id, primarySubmissionId)}
+                                className="text-red-500 hover:text-red-600 text-xs ml-2"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          ))}
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Write a comment..."
+                              value={newComment[primarySubmissionId] || ''}
+                              onChange={(e) => setNewComment(prev => ({ ...prev, [primarySubmissionId]: e.target.value }))}
+                              onKeyDown={(e) => { if (e.key === 'Enter') submitComment(primarySubmissionId); }}
+                              className="flex-1 px-3 py-2 text-sm border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                            />
+                            <button
+                              onClick={() => submitComment(primarySubmissionId)}
+                              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg"
+                            >
+                              Send
+                            </button>
+                          </div>
+                          {commentError[primarySubmissionId] && (
+                            <p className="text-red-500 text-xs">{commentError[primarySubmissionId]}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          )}
+        </main>
+      )}
 
       {userSubmissions.length > 0 && (
         <main className="max-w-4xl mx-auto py-8 px-6">

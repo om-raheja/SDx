@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
 
+const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
+
 async function ensureTables() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS teacher_comments (
@@ -19,21 +21,21 @@ export async function POST(request: Request) {
   
   try {
     const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!TEACHER_EMAILS.includes(session.email)) {
+      return NextResponse.json({ error: 'Only teachers can add comments' }, { status: 403 });
+    }
     
     const body = await request.json();
     const { submission_id, comment } = body;
-    console.log('POST:', submission_id, comment);
     
-    if (!submission_id || !comment) {
+    if (!submission_id || !comment?.trim()) {
       return NextResponse.json({ error: 'Submission ID and comment required' }, { status: 400 });
     }
-
-    const teacherId = session?.id || 'test-teacher-id';
-    const teacherEmail = session?.email || 'test@teacher.com';
     
     await pool.query(
       'INSERT INTO teacher_comments (id, submission_id, teacher_id, comment, created_at) VALUES (gen_random_uuid(), $1, $2, $3, NOW())',
-      [submission_id, teacherEmail, comment]
+      [submission_id, session.email, comment.trim()]
     );
 
     return NextResponse.json({ success: true });
@@ -52,6 +54,12 @@ export async function GET(request: Request) {
   }
 
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!TEACHER_EMAILS.includes(session.email)) {
+      return NextResponse.json({ error: 'Only teachers can view comments here' }, { status: 403 });
+    }
+
     await ensureTables();
     const result = await pool.query(
       'SELECT tc.*, tc.teacher_id as teacher_name FROM teacher_comments tc WHERE tc.submission_id = $1 ORDER BY tc.created_at ASC',
@@ -70,7 +78,6 @@ export async function DELETE(request: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
     if (!TEACHER_EMAILS.includes(session.email)) {
       return NextResponse.json({ error: 'Only teachers can delete comments' }, { status: 403 });
     }
