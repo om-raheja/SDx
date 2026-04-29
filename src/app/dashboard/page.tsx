@@ -23,6 +23,17 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
 
+  const fetchTeacherSubmissions = () => {
+    fetch("/api/submissions")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setTeacherSubmissions(data);
+        }
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     const isDark = localStorage.getItem("darkMode") === "true" || 
       (!localStorage.getItem("darkMode") && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -54,14 +65,7 @@ export default function Dashboard() {
           })
           .catch(() => {});
         if (isTeacher) {
-          fetch("/api/submissions")
-            .then(res => res.json())
-            .then(data => {
-              if (Array.isArray(data)) {
-                setTeacherSubmissions(data);
-              }
-            })
-            .catch(() => {});
+          fetchTeacherSubmissions();
         }
       })
       .catch(() => router.push('/auth/signin'))
@@ -143,6 +147,26 @@ export default function Dashboard() {
   const deleteComment = async (commentId: string, submissionId: string) => {
     await fetch(`/api/teacher-comments?comment_id=${commentId}`, { method: 'DELETE' });
     loadComments(submissionId);
+  };
+
+  const deleteSubmission = async (submissionId: string) => {
+    await fetch(`/api/submissions?submission_id=${submissionId}`, { method: 'DELETE' });
+    setComments(prev => {
+      const next = { ...prev };
+      delete next[submissionId];
+      return next;
+    });
+    setNewComment(prev => {
+      const next = { ...prev };
+      delete next[submissionId];
+      return next;
+    });
+    setCommentError(prev => {
+      const next = { ...prev };
+      delete next[submissionId];
+      return next;
+    });
+    fetchTeacherSubmissions();
   };
 
   if (loading || !user) {
@@ -250,7 +274,19 @@ export default function Dashboard() {
                             return (
                               <div key={hintNum} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-800">
                                 <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium">H{hintNum}</span>
-                                <span className="text-zinc-700 dark:text-zinc-300">{sub ? sub.diagnosis : 'No diagnosis'}</span>
+                                {sub ? (
+                                  <div className="flex-1 flex items-start justify-between gap-2">
+                                    <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis}</span>
+                                    <button
+                                      onClick={() => deleteSubmission(sub.id)}
+                                      className="text-red-500 hover:text-red-600 text-xs"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-zinc-700 dark:text-zinc-300">No diagnosis</span>
+                                )}
                               </div>
                             );
                           });
