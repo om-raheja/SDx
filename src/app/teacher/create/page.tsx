@@ -156,7 +156,7 @@ export default function CreateCase() {
               max="20"
               value={hintCount}
               onChange={(e) => handleHintCountChange(parseInt(e.target.value))}
-              className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer"
+              className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:bg-blue-600 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer"
             />
             <input
               type="number"
@@ -214,7 +214,11 @@ export default function CreateCase() {
                 </button>
               )}
               {hint.imageUrl && (
-                <img src={hint.imageUrl} alt={`Hint ${index + 1}`} className="mt-2 max-h-40 rounded-lg" />
+                <img 
+                  src={`/api/image?url=${encodeURIComponent(hint.imageUrl)}`} 
+                  alt={`Hint ${index + 1}`} 
+                  className="mt-2 max-h-40 rounded-lg" 
+                />
               )}
             </div>
           ))}
