@@ -52,6 +52,11 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     const { id } = await params;
     
+    // Delete teacher comments attached to this case's submissions
+    await pool.query(
+      'DELETE FROM teacher_comments WHERE submission_id IN (SELECT id FROM submissions WHERE case_id = $1)',
+      [id]
+    );
     // Delete hints first
     await pool.query('DELETE FROM hints WHERE case_id = $1', [id]);
     // Delete submissions

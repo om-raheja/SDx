@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 
 interface User {
   id: string;
@@ -169,6 +170,12 @@ export default function Dashboard() {
     fetchTeacherSubmissions();
   };
 
+  const deleteCase = async (caseId: string) => {
+    await fetch(`/api/cases/${caseId}`, { method: "DELETE" });
+    setCases(prev => prev.filter(c => c.id !== caseId));
+    setTeacherSubmissions(prev => prev.filter(s => s.case_id !== caseId));
+  };
+
   if (loading || !user) {
     return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">Loading...</div>;
   }
@@ -217,14 +224,25 @@ export default function Dashboard() {
         ) : (
           <div className="grid gap-4">
             {cases.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => router.push(`/dashboard/${c.id}`)}
-                className="flex items-center justify-between p-6 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 text-left"
-              >
-                <span className="text-lg font-medium text-zinc-900 dark:text-white">{c.title}</span>
-                <span className="text-zinc-500 dark:text-zinc-400">→</span>
-              </button>
+              <div key={c.id} className="flex items-center gap-2">
+                <button
+                  onClick={() => router.push(`/dashboard/${c.id}`)}
+                  className="flex-1 flex items-center justify-between p-6 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 text-left"
+                >
+                  <span className="text-lg font-medium text-zinc-900 dark:text-white">{c.title}</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">→</span>
+                </button>
+                {isTeacher && (
+                  <button
+                    onClick={() => deleteCase(c.id)}
+                    className="p-3 rounded-lg border border-red-200 text-red-500 hover:text-red-600 hover:border-red-300 bg-white dark:bg-zinc-900 dark:border-red-900/50"
+                    title="Delete case"
+                    aria-label="Delete case"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -279,9 +297,11 @@ export default function Dashboard() {
                                     <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis}</span>
                                     <button
                                       onClick={() => deleteSubmission(sub.id)}
-                                      className="text-red-500 hover:text-red-600 text-xs"
+                                      className="text-red-500 hover:text-red-600"
+                                      title="Delete submission"
+                                      aria-label="Delete submission"
                                     >
-                                      Delete
+                                      <Trash2 className="w-4 h-4" />
                                     </button>
                                   </div>
                                 ) : (
@@ -307,9 +327,11 @@ export default function Dashboard() {
                               </div>
                               <button
                                 onClick={() => deleteComment(c.id, primarySubmissionId)}
-                                className="text-red-500 hover:text-red-600 text-xs ml-2"
+                                className="text-red-500 hover:text-red-600 ml-2"
+                                title="Delete comment"
+                                aria-label="Delete comment"
                               >
-                                Delete
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           ))}
