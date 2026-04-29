@@ -9,13 +9,10 @@ async function ensureTables() {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         submission_id VARCHAR(255),
         teacher_id VARCHAR(255),
-        teacher_name VARCHAR(255),
         comment TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
-    // Add column if missing
-    await pool.query(`ALTER TABLE teacher_comments ADD COLUMN IF NOT EXISTS teacher_name VARCHAR(255);`);
   } catch (e) {
     console.error('ensureTables error:', e);
   }
@@ -36,11 +33,10 @@ export async function POST(request: Request) {
     }
 
     const teacherId = session?.id || 'test-teacher-id';
-    const teacherName = session?.name || session?.email || 'Teacher';
     
     await pool.query(
-      'INSERT INTO teacher_comments (id, submission_id, teacher_id, teacher_name, comment, created_at) VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW())',
-      [submission_id, teacherId, teacherName, comment]
+      'INSERT INTO teacher_comments (id, submission_id, teacher_id, comment, created_at) VALUES (gen_random_uuid(), $1, $2, $3, NOW())',
+      [submission_id, teacherId, comment]
     );
 
     return NextResponse.json({ success: true });
@@ -60,7 +56,7 @@ export async function GET(request: Request) {
 
   try {
     const result = await pool.query(
-      'SELECT tc.*, COALESCE(tc.teacher_name, u.name, \'Teacher\') as teacher_name FROM teacher_comments tc LEFT JOIN users u ON tc.teacher_id = u.id WHERE tc.submission_id = $1 ORDER BY tc.created_at ASC',
+      'SELECT tc.*, tc.teacher_id as teacher_name FROM teacher_comments tc WHERE tc.submission_id = $1 ORDER BY tc.created_at ASC',
       [submission_id]
     );
     return NextResponse.json(result.rows);
