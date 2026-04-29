@@ -14,7 +14,7 @@ async function ensureTables() {
       );
     `);
   } catch (e) {
-    console.log('ensureTables error (may be ok):', e);
+    console.error('ensureTables error:', JSON.stringify(e));
   }
 }
 
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { submission_id, comment } = body;
-    console.log('Adding comment:', submission_id, comment);
+    console.log('POST comment:', submission_id, comment);
     
     if (!submission_id || !comment) {
       return NextResponse.json({ error: 'Submission ID and comment required' }, { status: 400 });
