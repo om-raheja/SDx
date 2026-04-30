@@ -19,7 +19,7 @@ export async function GET() {
       FROM submissions s
       LEFT JOIN cases c ON s.case_id = c.id
       LEFT JOIN users u ON s.user_id = u.id
-      ORDER BY s.id
+      ORDER BY s.created_at DESC, s.id DESC
     `);
     
     return NextResponse.json(result.rows);

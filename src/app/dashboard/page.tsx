@@ -227,7 +227,9 @@ export default function Dashboard() {
       return acc;
     }, {});
 
-    return Object.values(grouped);
+    return Object.values(grouped).sort(
+      (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   };
 
   const getStudentSubmissionGroups = (caseId: string) => {
