@@ -17,9 +17,38 @@ export async function GET() {
       FROM submissions s
       LEFT JOIN cases c ON s.case_id = c.id
       LEFT JOIN users u ON s.user_id = u.id
-      ORDER BY s.created_at DESC
+      ORDER BY s.user_id, s.case_id, s.created_at ASC
     `);
-    return NextResponse.json(result.rows);
+    
+    // Group by submission_group_id only
+    const submissions = result.rows;
+    const grouped: any[] = [];
+    let currentGroup: any[] = [];
+    let lastGroupId = '';
+    
+    submissions.forEach((sub: any) => {
+      const groupId = sub.submission_group_id || `legacy-${sub.id}`;
+      
+      if (groupId !== lastGroupId && currentGroup.length > 0) {
+        grouped.push(currentGroup);
+        currentGroup = [];
+      }
+      
+      currentGroup.push(sub);
+      lastGroupId = groupId;
+    });
+    if (currentGroup.length > 0) grouped.push(currentGroup);
+    
+    // Flatten with group_id
+    const regrouped: any[] = [];
+    grouped.forEach((group, idx) => {
+      group.forEach((sub: any) => {
+        sub.group_id = `sub-${idx}`;
+        regrouped.push(sub);
+      });
+    });
+    
+    return NextResponse.json(regrouped);
   } catch {
     return NextResponse.json({ error: 'Failed to fetch submissions' }, { status: 500 });
   }
