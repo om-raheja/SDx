@@ -10,10 +10,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const blob = await put(file.name, buffer, {
-      access: 'private',
-      token: process.env.BLOB_READ_WRITE_TOKEN,
+    const blob = await put(file.name, file, {
+      access: 'public',
+      addRandomSuffix: true,
+      contentType: file.type || 'application/octet-stream',
     });
 
     return NextResponse.json({ url: blob.url });
@@ -32,9 +32,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Valid URL required' }, { status: 400 });
     }
 
-    await del(url, {
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    });
+    await del(url);
 
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -46,7 +46,7 @@ export default function CreateCase() {
   const handleImageUpload = async (index: number, file: File) => {
     if (!file) return;
     
-    setUploading([...uploading, { index }]);
+    setUploading((prev) => [...prev, { index }]);
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -58,16 +58,19 @@ export default function CreateCase() {
       
       if (res.ok) {
         const data = await res.json();
-        const newHints = [...hints];
-        newHints[index].imageUrl = data.url;
-        setHints(newHints);
+        setHints((prev) => {
+          const next = [...prev];
+          next[index].imageUrl = data.url;
+          return next;
+        });
       } else {
-        setError('Upload failed');
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Upload failed');
       }
     } catch {
       setError('Upload failed');
     }
-    setUploading(uploading.filter(u => u.index !== index));
+    setUploading((prev) => prev.filter((u) => u.index !== index));
   };
 
   const handleImageRemove = (index: number) => {

@@ -9,11 +9,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const response = await fetch(imageUrl, {
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    const response = await fetch(imageUrl, token ? {
       headers: {
-        'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+        Authorization: `Bearer ${token}`,
       },
-    });
+    } : undefined);
 
     if (!response.ok) {
       return new NextResponse('Failed to fetch image', { status: response.status });
