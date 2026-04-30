@@ -2,10 +2,23 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
 
+async function ensureTeacherCommentsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS teacher_comments (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      submission_id VARCHAR(255),
+      teacher_id VARCHAR(255),
+      comment TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+}
+
 export async function GET() {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    await ensureTeacherCommentsTable();
     
     const userId = session.id;
     const email = session.email;
