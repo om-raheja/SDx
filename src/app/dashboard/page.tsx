@@ -148,12 +148,30 @@ export default function Dashboard() {
 
   const deleteStudentSubmissions = async (
     caseId: string,
-    studentEmail: string,
     submissionIds: string[],
-    studentUserId?: string | null
   ) => {
-    // Send student_email (with underscore) to match API
-    await fetch(`/api/submissions?case_id=${encodeURIComponent(caseId)}&student_email=${encodeURIComponent(studentEmail)}`, { method: 'DELETE' });
+    const batchParams = new URLSearchParams({
+      case_id: caseId,
+      submission_ids: submissionIds.join(','),
+    });
+    let deleted = false;
+    const batchRes = await fetch(`/api/submissions?${batchParams.toString()}`, { method: 'DELETE' });
+    deleted = batchRes.ok;
+
+    if (!deleted) {
+      const perIdResults = await Promise.all(
+        submissionIds.map((id) =>
+          fetch(`/api/submissions?submission_id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+        )
+      );
+      deleted = perIdResults.every((res) => res.ok);
+    }
+
+    if (!deleted) return;
+
+    setTeacherSubmissions((prev) =>
+      prev.filter((submission) => !submissionIds.includes(submission.id))
+    );
 
     setComments((prev) => {
       const next = { ...prev };
@@ -170,8 +188,6 @@ export default function Dashboard() {
       submissionIds.forEach((id) => delete next[id]);
       return next;
     });
-
-    // Refresh the teacher submissions data
     fetchTeacherSubmissions();
   };
 
@@ -323,27 +339,22 @@ export default function Dashboard() {
                               if (!primarySubmissionId) return null;
 
                               return (
-                                <div key={`${g.email}-${g.case_id}`} className="px-6 py-4 border-b last:border-b-0 border-zinc-200 dark:border-zinc-700">
+                                <div key={`${g.submission_group_id || g.submissions[0]?.id || `${g.email}-${g.case_id}`}`} className="px-6 py-4 border-b last:border-b-0 border-zinc-200 dark:border-zinc-700">
                                   <div className="flex justify-between items-start mb-3">
                                     <h3 className="font-medium text-zinc-900 dark:text-white">{g.email}</h3>
-                                    <div className="text-right">
-                                      <span className="text-xs text-zinc-500 dark:text-zinc-400">{new Date(g.created_at).toLocaleString()}</span>
-                                      <button
-                                        onClick={() =>
-                                          deleteStudentSubmissions(
-                                            g.case_id,
-                                            g.email,
-                                            g.submissions.map((s: any) => s.id),
-                                            g.student_user_id
-                                          )
-                                        }
-                                        className="block ml-auto mt-1 text-red-500 hover:text-red-600"
-                                        title="Delete student submissions"
-                                        aria-label="Delete student submissions"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </div>
+                                    <button
+                                      onClick={() =>
+                                        deleteStudentSubmissions(
+                                          g.case_id,
+                                          g.submissions.map((s: any) => s.id),
+                                        )
+                                      }
+                                      className="text-red-500 hover:text-red-600"
+                                      title="Delete student submissions"
+                                      aria-label="Delete student submissions"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
                                   </div>
 
                                   <div className="space-y-3 mb-4">
@@ -372,14 +383,11 @@ export default function Dashboard() {
                                         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                                       );
                                       
-                                      return sortedGroups.map((group: any, groupIdx: number) => (
+                                      return sortedGroups.map((group: any) => (
                                           <div key={group.id} className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
                                             <div className="bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm font-medium flex items-center justify-between">
-                                              <span>
-                                                {groupIdx + 1}
-                                                <span className="text-xs text-zinc-500 ml-2">
-                                                  {group.submissions.length} hint{group.submissions.length > 1 ? 's' : ''}
-                                                </span>
+                                              <span className="truncate">
+                                                {group.email || g.email}
                                               </span>
                                               <span className="text-xs text-zinc-400">
                                                 {new Date(group.created_at).toLocaleString()}
