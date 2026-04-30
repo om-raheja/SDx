@@ -81,8 +81,8 @@ export default function EditCaseHints() {
       });
 
       if (!uploadRes.ok) {
-        const data = await uploadRes.json();
-        setError(data.error || "Image upload failed");
+        const data = await uploadRes.json().catch(() => ({}));
+        setError(data.details ? `${data.error || "Image upload failed"}: ${data.details}` : (data.error || "Image upload failed"));
         return;
       }
 

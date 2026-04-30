@@ -65,7 +65,7 @@ export default function CreateCase() {
         });
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(data.error || 'Upload failed');
+        setError(data.details ? `${data.error || 'Upload failed'}: ${data.details}` : (data.error || 'Upload failed'));
       }
     } catch {
       setError('Upload failed');
