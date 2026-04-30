@@ -171,6 +171,7 @@ export default function Dashboard() {
       return next;
     });
 
+    // Refresh the teacher submissions data
     fetchTeacherSubmissions();
   };
 
