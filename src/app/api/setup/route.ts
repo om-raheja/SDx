@@ -42,8 +42,20 @@ export async function POST() {
         diagnosis TEXT,
         submitted_after_hint INT,
         is_final BOOLEAN DEFAULT FALSE,
+        submission_group_id VARCHAR(255),
         created_at TIMESTAMP DEFAULT NOW()
       );
+    `);
+
+    // Add submission_group_id column if it doesn't exist (for existing tables)
+    await pool.query(`
+      DO $$ 
+      BEGIN 
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='submissions' AND column_name='submission_group_id') THEN
+          ALTER TABLE submissions ADD COLUMN submission_group_id VARCHAR(255);
+        END IF;
+      END $$;
     `);
 
     await pool.query(`

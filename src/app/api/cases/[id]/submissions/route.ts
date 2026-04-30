@@ -11,13 +11,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id: caseId } = await params;
     const { diagnosis, submitted_after_hint, is_final } = await request.json();
 
-    const submissionId = uuidv4();
-    await pool.query(
-      'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final, email) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7)',
-      [submissionId, session.id, caseId, diagnosis, submitted_after_hint, is_final || false, session.email]
+    // Check if this user already has a submission_group_id for this case
+    const existingGroupResult = await pool.query(
+      'SELECT submission_group_id FROM submissions WHERE user_id = $1 AND case_id = $2 AND submission_group_id IS NOT NULL LIMIT 1',
+      [session.id, caseId]
     );
 
-    return NextResponse.json({ success: true, submissionId });
+    let submissionGroupId;
+    if (existingGroupResult.rows.length > 0 && existingGroupResult.rows[0].submission_group_id) {
+      // Reuse existing group ID
+      submissionGroupId = existingGroupResult.rows[0].submission_group_id;
+    } else {
+      // Create new group ID
+      submissionGroupId = uuidv4();
+    }
+
+    const submissionId = uuidv4();
+    await pool.query(
+      'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final, email, submission_group_id) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8)',
+      [submissionId, session.id, caseId, diagnosis, submitted_after_hint, is_final || false, session.email, submissionGroupId]
+    );
+
+    return NextResponse.json({ success: true, submissionId, submissionGroupId });
   } catch {
     return NextResponse.json({ error: 'Failed to submit diagnosis' }, { status: 500 });
   }
