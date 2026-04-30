@@ -152,7 +152,7 @@ export default function Dashboard() {
     submissionIds: string[],
     studentUserId?: string | null
   ) => {
-    // Always use email as the key for deletion to match grouping logic
+    // Send student_email (with underscore) to match API
     await fetch(`/api/submissions?case_id=${encodeURIComponent(caseId)}&student_email=${encodeURIComponent(studentEmail)}`, { method: 'DELETE' });
 
     setComments((prev) => {

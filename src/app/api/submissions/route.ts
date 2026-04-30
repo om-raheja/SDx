@@ -37,7 +37,7 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const submissionId = searchParams.get('submission_id');
     const caseId = searchParams.get('case_id');
-    const studentEmail = searchParams.get('student_email');
+    const studentEmail = searchParams.get('student_email') || searchParams.get('student_email');
 
     // For individual submission deletion by ID
     if (submissionId) {
@@ -52,10 +52,7 @@ export async function DELETE(request: Request) {
     // For group deletion by case and student email
     if (caseId && studentEmail) {
       const idsResult = await pool.query(
-        `SELECT s.id
-          FROM submissions s
-          LEFT JOIN users u ON s.user_id = u.id
-          WHERE s.case_id = $1 AND COALESCE(u.email, s.email, 'Unknown') = $2`,
+        'SELECT s.id FROM submissions s LEFT JOIN users u ON s.user_id = u.id WHERE s.case_id = $1 AND COALESCE(u.email, s.email, \'Unknown\') = $2',
         [caseId, studentEmail]
       );
 
@@ -64,23 +61,12 @@ export async function DELETE(request: Request) {
       }
 
       await pool.query(
-        `DELETE FROM teacher_comments
-          WHERE submission_id IN (
-            SELECT s.id
-            FROM submissions s
-            LEFT JOIN users u ON s.user_id = u.id
-            WHERE s.case_id = $1 AND COALESCE(u.email, s.email, 'Unknown') = $2
-          )`,
+        'DELETE FROM teacher_comments WHERE submission_id IN (SELECT s.id FROM submissions s LEFT JOIN users u ON s.user_id = u.id WHERE s.case_id = $1 AND COALESCE(u.email, s.email, \'Unknown\') = $2)',
         [caseId, studentEmail]
       );
 
       await pool.query(
-        `DELETE FROM submissions
-          WHERE case_id = $1
-            AND (
-              email = $2
-              OR user_id IN (SELECT id FROM users WHERE email = $2)
-            )`,
+        'DELETE FROM submissions WHERE case_id = $1 AND (email = $2 OR user_id IN (SELECT id FROM users WHERE email = $2))',
         [caseId, studentEmail]
       );
 
@@ -88,7 +74,8 @@ export async function DELETE(request: Request) {
     }
 
     return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
-  } catch {
+  } catch (err) {
+    console.error('Delete error:', err);
     return NextResponse.json({ error: 'Failed to delete submission' }, { status: 500 });
   }
 }
