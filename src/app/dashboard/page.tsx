@@ -189,8 +189,8 @@ export default function Dashboard() {
   const getCaseSubmissionGroups = (caseId: string) => {
     const caseSubs = teacherSubmissions.filter((s: any) => s.case_id === caseId);
     const grouped = caseSubs.reduce((acc: Record<string, any>, s: any) => {
-      // Group by submission_group_id if available, otherwise fall back to email
-      const groupId = s.submission_group_id || s.student_email || s.user_email || s.email || 'Unknown';
+      // Group ONLY by submission_group_id (each group_id = one submission session)
+      const groupId = s.submission_group_id || `legacy-${s.id}`;
       const key = groupId;
       
       if (!acc[key]) {
@@ -249,10 +249,10 @@ export default function Dashboard() {
         ) : (
           <div className="grid gap-4">
             {cases.map((c) => {
-               const groups = isTeacher ? getCaseSubmissionGroups(c.id) : [];
-               const caseSubmissionCount = isTeacher
-                 ? groups.reduce((total, group) => total + group.submissions.length, 0)
-                 : 0;
+                const groups = isTeacher ? getCaseSubmissionGroups(c.id) : [];
+                const caseSubmissionCount = isTeacher
+                  ? groups.length  // Number of submission GROUPS (sessions)
+                  : 0;
 
               return (
                 <div key={c.id} className="rounded-lg border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900">
