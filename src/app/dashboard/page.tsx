@@ -339,8 +339,8 @@ export default function Dashboard() {
                               if (!primarySubmissionId) return null;
 
                               return (
-                                <div key={`${g.submission_group_id || g.submissions[0]?.id || `${g.email}-${g.case_id}`}`} className="px-6 py-4 border-b last:border-b-0 border-zinc-200 dark:border-zinc-700">
-                                  <div className="flex justify-between items-start mb-3">
+                                <div key={`${g.submission_group_id || g.submissions[0]?.id || `${g.email}-${g.case_id}`}`} className="px-6 py-3 border-b last:border-b-0 border-zinc-200 dark:border-zinc-700">
+                                  <div className="flex justify-between items-start mb-2">
                                     <h3 className="font-medium text-zinc-900 dark:text-white">{g.email}</h3>
                                     <button
                                       onClick={() =>
@@ -357,7 +357,7 @@ export default function Dashboard() {
                                     </button>
                                   </div>
 
-                                  <div className="space-y-3 mb-4">
+                                  <div className="space-y-2 mb-3">
                                     {(() => {
                                       // Group submissions by submission_group_id
                                       const groups: Record<string, any> = {};
@@ -384,21 +384,21 @@ export default function Dashboard() {
                                       );
                                       
                                       return sortedGroups.map((group: any) => (
-                                          <div key={group.id} className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                                            <div className="bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm font-medium flex items-center justify-between">
-                                              <span className="truncate">
-                                                {group.email || g.email}
+                                          <div key={group.id} className="border border-zinc-200 dark:border-zinc-700 rounded-md overflow-hidden">
+                                            <div className="bg-zinc-100 dark:bg-zinc-800 px-2 py-1.5 text-xs font-medium flex items-center justify-between">
+                                              <span className="truncate text-zinc-600 dark:text-zinc-300">
+                                                {group.submissions.length} hint{group.submissions.length > 1 ? 's' : ''}
                                               </span>
                                               <span className="text-xs text-zinc-400">
                                                 {new Date(group.created_at).toLocaleString()}
                                               </span>
                                             </div>
-                                            <div className="p-2 space-y-1">
+                                            <div className="p-1.5 space-y-1">
                                               {group.submissions
                                                 .sort((a: any, b: any) => (a.submitted_after_hint || 0) - (b.submitted_after_hint || 0))
                                                 .map((sub: any, idx: number) => (
-                                                  <div key={sub.id || idx} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-900">
-                                                    <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium min-w-[50px] text-center">
+                                                  <div key={sub.id || idx} className="flex items-start gap-1.5 text-sm p-1.5 rounded bg-zinc-50 dark:bg-zinc-900">
+                                                    <span className="px-1.5 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium min-w-[42px] text-center">
                                                       {sub.submitted_after_hint || '?'}
                                                     </span>
                                                     <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis || 'No diagnosis'}</span>
