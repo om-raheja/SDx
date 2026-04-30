@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
+import { backfillSubmissionGroups } from '@/lib/submission-groups';
 
 async function ensureTeacherCommentsTable() {
   await pool.query(`
@@ -19,6 +20,7 @@ export async function GET() {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     await ensureTeacherCommentsTable();
+    await backfillSubmissionGroups();
     
     const userId = session.id;
     const email = session.email;

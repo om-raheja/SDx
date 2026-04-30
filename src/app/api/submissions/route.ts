@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
+import { backfillSubmissionGroups } from '@/lib/submission-groups';
 
 const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
 
@@ -11,6 +12,7 @@ export async function GET() {
     if (!TEACHER_EMAILS.includes(session.email)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+    await backfillSubmissionGroups();
     
     const result = await pool.query(`
       SELECT s.*, c.title as case_title, COALESCE(u.email, s.email, 'Unknown') as student_email

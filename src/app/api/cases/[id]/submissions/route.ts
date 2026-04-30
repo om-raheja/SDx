@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
+import { backfillSubmissionGroups, getSubmissionGroupForNewSubmission } from '@/lib/submission-groups';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -11,31 +12,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id: caseId } = await params;
     const { diagnosis, submitted_after_hint, is_final } = await request.json();
 
-    // Use email as identifier (more reliable than user_id which might be null)
-    const userIdentifier = session.email;
     const email = session.email;
+    const userId = session.id || null;
 
-    // Check if this user already has a submission_group_id for this case
-    const existingGroupResult = await pool.query(
-      `SELECT submission_group_id FROM submissions 
-       WHERE (user_id = $1 OR email = $2) AND case_id = $3 AND submission_group_id IS NOT NULL 
-       LIMIT 1`,
-      [session.id || '', email, caseId]
-    );
-
-    let submissionGroupId;
-    if (existingGroupResult.rows.length > 0 && existingGroupResult.rows[0].submission_group_id) {
-      // Reuse existing group ID (same submission)
-      submissionGroupId = existingGroupResult.rows[0].submission_group_id;
-    } else {
-      // Create new group ID (first submission for this case)
-      submissionGroupId = uuidv4();
-    }
+    await backfillSubmissionGroups();
+    const submissionGroupId = await getSubmissionGroupForNewSubmission(caseId, userId, email);
 
     const submissionId = uuidv4();
     await pool.query(
       'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final, email, submission_group_id) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8)',
-      [submissionId, session.id || null, caseId, diagnosis, submitted_after_hint, is_final || false, email, submissionGroupId]
+      [submissionId, userId, caseId, diagnosis, submitted_after_hint, is_final || false, email, submissionGroupId]
     );
 
     return NextResponse.json({ success: true, submissionId, submissionGroupId });
