@@ -343,22 +343,53 @@ export default function Dashboard() {
                                     </div>
                                   </div>
 
-                                  <div className="space-y-2 mb-4">
-                                    {g.submissions
-                                      .sort((a: any, b: any) => (a.submitted_after_hint || 0) - (b.submitted_after_hint || 0))
-                                      .map((sub: any, index: number) => (
-                                        <div key={sub.id || index} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-100 dark:bg-zinc-800">
-                                          <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium">
-                                            H{sub.submitted_after_hint || '?'}
-                                          </span>
-                                          <div className="flex-1">
-                                            <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis || 'No diagnosis'}</span>
-                                            <span className="block text-xs text-zinc-400 mt-1">
-                                              {sub.created_at ? new Date(sub.created_at).toLocaleString() : 'Unknown time'}
+                                  <div className="space-y-3 mb-4">
+                                    {(() => {
+                                      // Group submissions by time proximity (within 10 minutes = same submission)
+                                      const sorted = [...g.submissions].sort((a: any, b: any) => 
+                                        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                                      );
+                                      
+                                      const groups: any[][] = [];
+                                      let currentGroup: any[] = [];
+                                      let lastTime = 0;
+                                      
+                                      sorted.forEach((sub: any) => {
+                                        const thisTime = new Date(sub.created_at).getTime();
+                                        if (currentGroup.length === 0 || (thisTime - lastTime) < 10 * 60 * 1000) {
+                                          currentGroup.push(sub);
+                                        } else {
+                                          if (currentGroup.length > 0) groups.push(currentGroup);
+                                          currentGroup = [sub];
+                                        }
+                                        lastTime = thisTime;
+                                      });
+                                      if (currentGroup.length > 0) groups.push(currentGroup);
+                                      
+                                      return groups.map((group, groupIdx) => (
+                                        <div key={groupIdx} className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                                          <div className="bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm font-medium">
+                                            Submission {groupIdx + 1} 
+                                            <span className="text-xs text-zinc-500 ml-2">
+                                              (H{Math.min(...group.map((s: any) => s.submitted_after_hint))}-H{Math.max(...group.map((s: any) => s.submitted_after_hint))})
+                                            </span>
+                                            <span className="text-xs text-zinc-400 ml-2">
+                                              {new Date(group[0].created_at).toLocaleString()}
                                             </span>
                                           </div>
+                                          <div className="p-2 space-y-1">
+                                            {group.map((sub: any, idx: number) => (
+                                              <div key={sub.id || idx} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-900">
+                                                <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium">
+                                                  H{sub.submitted_after_hint || '?'}
+                                                </span>
+                                                <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis || 'No diagnosis'}</span>
+                                              </div>
+                                            ))}
+                                          </div>
                                         </div>
-                                      ))}
+                                      ));
+                                    })()}
                                   </div>
 
                                   <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3">
