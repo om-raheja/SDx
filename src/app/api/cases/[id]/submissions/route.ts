@@ -9,13 +9,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: caseId } = await params;
-    const { diagnoses, is_final } = await request.json();
-    // diagnoses = array of {hint_number: X, diagnosis: "text"}
+    const { diagnosis, submitted_after_hint, is_final } = await request.json();
+
+    // Use email as identifier (more reliable than user_id which might be null)
+    const userIdentifier = session.email;
+    const email = session.email;
 
     // Check if this user already has a submission_group_id for this case
     const existingGroupResult = await pool.query(
-      'SELECT submission_group_id FROM submissions WHERE user_id = $1 AND case_id = $2 AND submission_group_id IS NOT NULL LIMIT 1',
-      [session.id, caseId]
+      `SELECT submission_group_id FROM submissions 
+       WHERE (user_id = $1 OR email = $2) AND case_id = $3 AND submission_group_id IS NOT NULL 
+       LIMIT 1`,
+      [session.id || '', email, caseId]
     );
 
     let submissionGroupId;
@@ -23,21 +28,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       // Reuse existing group ID (same submission)
       submissionGroupId = existingGroupResult.rows[0].submission_group_id;
     } else {
-      // Create new group ID (new submission attempt)
+      // Create new group ID (first submission for this case)
       submissionGroupId = uuidv4();
     }
 
-    // Insert all diagnoses in this submission
-    for (const diag of diagnoses) {
-      const submissionId = uuidv4();
-      await pool.query(
-        'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final, email, submission_group_id) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8)',
-        [submissionId, session.id, caseId, diag.diagnosis, diag.hint_number, is_final || false, session.email, submissionGroupId]
-      );
-    }
+    const submissionId = uuidv4();
+    await pool.query(
+      'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final, email, submission_group_id) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8)',
+      [submissionId, session.id || null, caseId, diagnosis, submitted_after_hint, is_final || false, email, submissionGroupId]
+    );
 
-    return NextResponse.json({ success: true, submissionGroupId });
-  } catch {
+    return NextResponse.json({ success: true, submissionId, submissionGroupId });
+  } catch (err) {
+    console.error('Submission error:', err);
     return NextResponse.json({ error: 'Failed to submit diagnosis' }, { status: 500 });
   }
 }
