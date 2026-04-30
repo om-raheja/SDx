@@ -189,8 +189,8 @@ export default function Dashboard() {
   const getCaseSubmissionGroups = (caseId: string) => {
     const caseSubs = teacherSubmissions.filter((s: any) => s.case_id === caseId);
     const grouped = caseSubs.reduce((acc: Record<string, any>, s: any) => {
-      // Use group_id from API (dynamically generated), fallback to submission_group_id, then legacy
-      const groupId = s.group_id || s.submission_group_id || `legacy-${s.id}`;
+      // Group by submission_group_id only
+      const groupId = s.submission_group_id || `legacy-${s.id}`;
       const key = groupId;
       
       if (!acc[key]) {
