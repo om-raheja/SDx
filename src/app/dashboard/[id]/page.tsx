@@ -26,6 +26,7 @@ export default function CaseDetail() {
   const [currentDiagnosis, setCurrentDiagnosis] = useState("");
   const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [completed, setCompleted] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -58,11 +59,8 @@ export default function CaseDetail() {
   const handleSubmitDiagnosis = async () => {
     if (!currentDiagnosis.trim()) return;
     setSubmitting(true);
-    
-    const newDiagnosis = { hint: currentHintIndex + 1, diagnosis: currentDiagnosis.trim() };
-    const updatedDiagnoses = [...diagnoses, newDiagnosis];
-    setDiagnoses(updatedDiagnoses);
-    
+    setSubmitError("");
+
     try {
       const isLastHint = currentHintIndex === hints.length - 1;
       const res = await fetch(`/api/cases/${id}/submissions`, {
@@ -74,20 +72,31 @@ export default function CaseDetail() {
           is_final: isLastHint,
         }),
       });
-      
-      if (res.ok && isLastHint) {
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSubmitError(data.error || "Failed to save diagnosis");
+        return;
+      }
+
+      setDiagnoses((prev) => {
+        const next = prev.filter((d) => d.hint !== currentHintIndex + 1);
+        next.push({ hint: currentHintIndex + 1, diagnosis: currentDiagnosis.trim() });
+        return next;
+      });
+
+      if (isLastHint) {
         setCompleted(true);
-      } else if (res.ok) {
-        // Clear current diagnosis after submitting, move to next hint
+      } else {
         setCurrentDiagnosis("");
-        if (currentHintIndex < hints.length - 1) {
-          setCurrentHintIndex(currentHintIndex + 1);
-        }
+        setCurrentHintIndex((prev) => Math.min(prev + 1, hints.length - 1));
       }
     } catch (err) {
       console.error(err);
+      setSubmitError("Failed to save diagnosis");
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const handleNextHint = () => {
@@ -211,6 +220,12 @@ export default function CaseDetail() {
             >
               {submitting ? "Submitting..." : "Submit Diagnosis"}
             </button>
+          </div>
+        )}
+
+        {submitError && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-red-700 dark:text-red-400">{submitError}</p>
           </div>
         )}
 
