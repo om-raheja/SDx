@@ -372,31 +372,31 @@ export default function Dashboard() {
                                       );
                                       
                                       return sortedGroups.map((group: any, groupIdx: number) => (
-                                        <div key={group.id} className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                                          <div className="bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm font-medium flex items-center justify-between">
-                                            <span>
-                                              Submission {groupIdx + 1}
-                                              <span className="text-xs text-zinc-500 ml-2">
-                                                {group.submissions.length} hint{group.submissions.length > 1 ? 's' : ''}
+                                          <div key={group.id} className="border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                                            <div className="bg-zinc-100 dark:bg-zinc-800 px-3 py-2 text-sm font-medium flex items-center justify-between">
+                                              <span>
+                                                {groupIdx + 1}
+                                                <span className="text-xs text-zinc-500 ml-2">
+                                                  {group.submissions.length} hint{group.submissions.length > 1 ? 's' : ''}
+                                                </span>
                                               </span>
-                                            </span>
-                                            <span className="text-xs text-zinc-400">
-                                              {new Date(group.created_at).toLocaleString()}
-                                            </span>
+                                              <span className="text-xs text-zinc-400">
+                                                {new Date(group.created_at).toLocaleString()}
+                                              </span>
+                                            </div>
+                                            <div className="p-2 space-y-1">
+                                              {group.submissions
+                                                .sort((a: any, b: any) => (a.submitted_after_hint || 0) - (b.submitted_after_hint || 0))
+                                                .map((sub: any, idx: number) => (
+                                                  <div key={sub.id || idx} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-900">
+                                                    <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium min-w-[50px] text-center">
+                                                      {sub.submitted_after_hint || '?'}
+                                                    </span>
+                                                    <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis || 'No diagnosis'}</span>
+                                                  </div>
+                                              ))}
+                                            </div>
                                           </div>
-                                          <div className="p-2 space-y-1">
-                                            {group.submissions
-                                              .sort((a: any, b: any) => (a.submitted_after_hint || 0) - (b.submitted_after_hint || 0))
-                                              .map((sub: any, idx: number) => (
-                                                <div key={sub.id || idx} className="flex items-start gap-2 text-sm p-2 rounded bg-zinc-50 dark:bg-zinc-900">
-                                                  <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium min-w-[50px] text-center">
-                                                    H{sub.submitted_after_hint || '?'}
-                                                  </span>
-                                                  <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis || 'No diagnosis'}</span>
-                                                </div>
-                                            ))}
-                                          </div>
-                                        </div>
                                       ));
                                     })()}
                                   </div>

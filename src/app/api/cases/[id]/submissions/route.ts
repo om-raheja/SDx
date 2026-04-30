@@ -11,11 +11,35 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id: caseId } = await params;
     const { diagnosis, submitted_after_hint, is_final } = await request.json();
 
-    // Always create a NEW submission_group_id for each submission
-    // This allows multiple submission "sessions" per student per case
-    const submissionGroupId = uuidv4();
-    const submissionId = uuidv4();
+    // Check if this user has a recent submission for this case (within 1 hour)
+    const recentGroupResult = await pool.query(
+      `SELECT submission_group_id, created_at FROM submissions 
+       WHERE user_id = $1 AND case_id = $2 AND submission_group_id IS NOT NULL 
+       ORDER BY created_at DESC LIMIT 1`,
+      [session.id, caseId]
+    );
 
+    let submissionGroupId;
+    const ONE_HOUR = 60 * 60 * 1000; // 1 hour in milliseconds
+    
+    if (recentGroupResult.rows.length > 0 && recentGroupResult.rows[0].submission_group_id) {
+      const lastSubmissionTime = new Date(recentGroupResult.rows[0].created_at).getTime();
+      const now = Date.now();
+      const timeDiff = now - lastSubmissionTime;
+      
+      // Reuse group_id if last submission was within 1 hour AND not final
+      if (timeDiff < ONE_HOUR && !recentGroupResult.rows[0].is_final) {
+        submissionGroupId = recentGroupResult.rows[0].submission_group_id;
+      } else {
+        // Create new group (new attempt)
+        submissionGroupId = uuidv4();
+      }
+    } else {
+      // First submission for this user+case
+      submissionGroupId = uuidv4();
+    }
+
+    const submissionId = uuidv4();
     await pool.query(
       'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final, email, submission_group_id) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8)',
       [submissionId, session.id, caseId, diagnosis, submitted_after_hint, is_final || false, session.email, submissionGroupId]
