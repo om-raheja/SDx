@@ -11,8 +11,7 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [mode, setMode] = useState<"signin"|"signup">("signin");
   const [showReset, setShowReset] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   useEffect(() => {
     const isDark = localStorage.getItem("darkMode") === "true" || 
@@ -44,7 +43,7 @@ export default function SignInPage() {
         body: JSON.stringify({ email }),
       });
       if (res.ok) {
-        alert("Check your email for the magic link!");
+        setMagicLinkSent(true);
       } else {
         setError("Failed to send magic link");
       }
@@ -104,6 +103,21 @@ export default function SignInPage() {
     } catch { setError("Authentication failed"); }
     setLoading(false);
   };
+
+  if (magicLinkSent) {
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 dark:bg-zinc-950 min-h-screen">
+        <button onClick={toggleDarkMode} className="absolute top-4 right-4 p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800">🌙</button>
+        <main className="flex flex-col items-center gap-6 py-12 px-8 max-w-md w-full text-center">
+          <h1 className="text-2xl font-bold text-green-600">Check your email</h1>
+          <p className="text-zinc-600 dark:text-zinc-400">We sent a magic link to {email}. Click it to sign in.</p>
+          <button onClick={() => { setMagicLinkSent(false); setEmail(""); }} className="text-blue-600 hover:underline">
+            Back to sign in
+          </button>
+        </main>
+      </div>
+    );
+  }
 
   if (showReset && resetSent) {
     return (
@@ -242,6 +256,21 @@ export default function SignInPage() {
                 Forgot password?
               </button>
             )}
+            
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-px bg-zinc-300 dark:bg-zinc-700" />
+              <span className="text-xs text-zinc-500">or</span>
+              <div className="flex-1 h-px bg-zinc-300 dark:bg-zinc-700" />
+            </div>
+
+            <button 
+              type="button"
+              onClick={handleMagicLink}
+              disabled={!email || loading}
+              className="text-lg text-blue-600 hover:text-blue-700 underline disabled:opacity-50"
+            >
+              Magic Link
+            </button>
           </div>
         </div>
       </main>
