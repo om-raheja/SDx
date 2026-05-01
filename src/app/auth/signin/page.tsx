@@ -267,7 +267,7 @@ export default function SignInPage() {
               type="button"
               onClick={handleMagicLink}
               disabled={!email || loading}
-              className="text-lg text-blue-600 hover:text-blue-700 underline disabled:opacity-50"
+              className="text-lg font-medium text-zinc-900 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline disabled:opacity-50"
             >
               Magic Link
             </button>
