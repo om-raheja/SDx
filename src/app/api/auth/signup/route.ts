@@ -40,6 +40,22 @@ export async function POST(request: Request) {
     return response;
   } catch (err) {
     console.error('Signup error:', err);
+    const errorCode = (err as any)?.code || (err as any)?.rawData?.code || (err as any)?.rawData?.error;
+    const errorMessage = String((err as any)?.message || '').toLowerCase();
+    const connectionIds = (err as any)?.rawData?.connection_ids;
+    const connectionId = Array.isArray(connectionIds) ? connectionIds[0] : undefined;
+
+    if (errorCode === 'sso_required' || errorMessage.includes('sso') || errorMessage.includes('oauth')) {
+      return NextResponse.json(
+        {
+          error: 'This email is set up with Google/Microsoft sign-in. Redirecting you to SSO...',
+          ssoRequired: true,
+          connectionId,
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json({ error: 'Signup failed' }, { status: 500 });
   }
 }

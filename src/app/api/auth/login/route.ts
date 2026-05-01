@@ -33,6 +33,21 @@ export async function POST(request: Request) {
     return response;
   } catch (err) {
     console.error('Login error:', err);
+    const errorCode = (err as any)?.code || (err as any)?.rawData?.code || (err as any)?.rawData?.error;
+    const connectionIds = (err as any)?.rawData?.connection_ids;
+    const connectionId = Array.isArray(connectionIds) ? connectionIds[0] : undefined;
+
+    if (errorCode === 'sso_required') {
+      return NextResponse.json(
+        {
+          error: 'This account uses Google/Microsoft sign-in. Redirecting you to SSO...',
+          ssoRequired: true,
+          connectionId,
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
   }
 }

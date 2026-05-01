@@ -13,16 +13,23 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const provider = searchParams.get('provider');
+    const connectionId = searchParams.get('connection_id');
 
-    if (!provider || !ALLOWED_PROVIDERS.has(provider)) {
+    if (!connectionId && (!provider || !ALLOWED_PROVIDERS.has(provider))) {
       return NextResponse.redirect(new URL('/auth/signin?error=invalid_provider', request.url));
     }
 
     const redirectUri = `${new URL(request.url).origin}/api/auth/callback`;
-    const authorizationUrl = workos.userManagement.getAuthorizationUrl({
-      provider,
-      redirectUri,
-    });
+    const providerValue = provider || undefined;
+    const authorizationUrl = connectionId
+      ? workos.userManagement.getAuthorizationUrl({
+          connectionId,
+          redirectUri,
+        })
+      : workos.userManagement.getAuthorizationUrl({
+          provider: providerValue,
+          redirectUri,
+        });
 
     return NextResponse.redirect(authorizationUrl);
   } catch (err) {

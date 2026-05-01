@@ -93,6 +93,11 @@ export default function SignInPage() {
       const data = await res.json();
       if (res.ok) {
         window.location.href = "/dashboard";
+      } else if (data?.ssoRequired) {
+        const ssoPath = data.connectionId
+          ? `/api/auth/signin?connection_id=${encodeURIComponent(data.connectionId)}`
+          : "/api/auth/signin?provider=MicrosoftOAuth";
+        window.location.href = ssoPath;
       } else {
         setError(data.error || "Authentication failed");
       }
