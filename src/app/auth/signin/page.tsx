@@ -242,21 +242,6 @@ export default function SignInPage() {
                 Forgot password?
               </button>
             )}
-            
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-px bg-zinc-300 dark:bg-zinc-700" />
-              <span className="text-xs text-zinc-500">or</span>
-              <div className="flex-1 h-px bg-zinc-300 dark:bg-zinc-700" />
-            </div>
-
-            <button 
-              type="button"
-              onClick={handleMagicLink}
-              disabled={!email || loading}
-              className="text-lg text-blue-600 hover:text-blue-700 underline disabled:opacity-50"
-            >
-              Magic Link
-            </button>
           </div>
         </div>
       </main>
