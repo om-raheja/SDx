@@ -96,7 +96,7 @@ export default function SignInPage() {
       } else if (data?.ssoRequired) {
         const ssoPath = data.connectionId
           ? `/api/auth/signin?connection_id=${encodeURIComponent(data.connectionId)}`
-          : "/api/auth/signin?provider=MicrosoftOAuth";
+          : `/api/auth/signin?provider=${encodeURIComponent(data.provider || "MicrosoftOAuth")}`;
         window.location.href = ssoPath;
       } else {
         setError(data.error || "Authentication failed");
