@@ -238,7 +238,7 @@ export default function SignInPage() {
 
           <div className="text-center flex flex-col gap-2">
             {mode === "signin" && (
-              <button type="button" onClick={() => setShowReset(true)} className="text-sm text-blue-600 hover:text-blue-700">
+              <button type="button" onClick={() => setShowReset(true)} className="text-lg text-blue-600 hover:text-blue-700">
                 Forgot password?
               </button>
             )}
@@ -253,7 +253,7 @@ export default function SignInPage() {
               type="button"
               onClick={handleMagicLink}
               disabled={!email || loading}
-              className="text-base text-blue-600 hover:text-blue-700 underline disabled:opacity-50"
+              className="text-lg text-blue-600 hover:text-blue-700 underline disabled:opacity-50"
             >
               Magic Link
             </button>
