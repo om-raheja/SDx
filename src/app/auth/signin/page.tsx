@@ -217,13 +217,23 @@ export default function SignInPage() {
               </div>
             )}
             {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50"
-            >
-              {loading ? "Loading..." : mode === "signin" ? "Sign In" : "Sign Up"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50"
+              >
+                {loading ? "Loading..." : mode === "signin" ? "Sign In" : "Sign Up"}
+              </button>
+              <button 
+                type="button"
+                onClick={handleMagicLink}
+                disabled={!email || loading}
+                className="flex-1 py-3 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg font-medium disabled:opacity-50"
+              >
+                Magic Link
+              </button>
+            </div>
           </form>
 
           <div className="text-center flex flex-col gap-2">
@@ -236,21 +246,6 @@ export default function SignInPage() {
                 Forgot password?
               </button>
             )}
-            
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-px bg-zinc-300 dark:bg-zinc-700" />
-              <span className="text-xs text-zinc-500">or</span>
-              <div className="flex-1 h-px bg-zinc-300 dark:bg-zinc-700" />
-            </div>
-
-            <button 
-              type="button"
-              onClick={handleMagicLink}
-              disabled={!email || loading}
-              className="text-sm text-zinc-500 hover:text-blue-600 dark:text-zinc-400 disabled:opacity-50"
-            >
-              Send magic link instead
-            </button>
           </div>
         </div>
       </main>
