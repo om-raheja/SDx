@@ -227,25 +227,36 @@ export default function SignInPage() {
               </button>
               <button 
                 type="button"
-                onClick={handleMagicLink}
-                disabled={!email || loading}
-                className="flex-1 py-3 bg-zinc-600 hover:bg-zinc-700 text-white rounded-lg font-medium disabled:opacity-50"
+                onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+                disabled={loading}
+                className="flex-1 py-3 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg font-medium disabled:opacity-50"
               >
-                Magic Link
+                {mode === "signin" ? "Sign Up" : "Sign In"}
               </button>
             </div>
           </form>
 
           <div className="text-center flex flex-col gap-2">
-            <button type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")} className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400">
-              {mode === "signin" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
-            </button>
-            
             {mode === "signin" && (
               <button type="button" onClick={() => setShowReset(true)} className="text-sm text-blue-600 hover:text-blue-700">
                 Forgot password?
               </button>
             )}
+            
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-px bg-zinc-300 dark:bg-zinc-700" />
+              <span className="text-xs text-zinc-500">or</span>
+              <div className="flex-1 h-px bg-zinc-300 dark:bg-zinc-700" />
+            </div>
+
+            <button 
+              type="button"
+              onClick={handleMagicLink}
+              disabled={!email || loading}
+              className="text-base text-blue-600 hover:text-blue-700 underline disabled:opacity-50"
+            >
+              Magic Link
+            </button>
           </div>
         </div>
       </main>
