@@ -16,14 +16,23 @@ export async function GET(request: Request) {
 
   try {
     const workosAny: any = workos;
-    const { profile } = await workosAny.userManagement.authenticateWithCode({
+    const authResponse = await workosAny.userManagement.authenticateWithCode({
       code,
     });
+    const sourceUser = authResponse?.user || authResponse?.profile;
+
+    if (!sourceUser?.id || !sourceUser?.email) {
+      return NextResponse.redirect(new URL('/auth/signin?error=invalid_user', request.url));
+    }
+
+    const firstName = sourceUser.firstName || '';
+    const lastName = sourceUser.lastName || '';
+    const fullName = `${firstName} ${lastName}`.trim();
 
     const user = {
-      id: profile.id,
-      email: profile.email,
-      name: profile.firstName + ' ' + profile.lastName,
+      id: sourceUser.id,
+      email: sourceUser.email,
+      name: fullName || sourceUser.email,
     };
 
     const response = NextResponse.redirect(new URL('/dashboard', request.url));
