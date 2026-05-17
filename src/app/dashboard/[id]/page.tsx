@@ -11,11 +11,6 @@ interface Hint {
   labs?: string;
 }
 
-interface Diagnosis {
-  hint: number;
-  diagnosis: string;
-}
-
 export default function CaseDetail() {
   const router = useRouter();
   const params = useParams();
@@ -23,13 +18,15 @@ export default function CaseDetail() {
   const [caseData, setCaseData] = useState<any>(null);
   const [hints, setHints] = useState<Hint[]>([]);
   const [currentHintIndex, setCurrentHintIndex] = useState(0);
+  const [diagnoses, setDiagnoses] = useState<Record<number, string>>({});
   const [currentDiagnosis, setCurrentDiagnosis] = useState("");
-  const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
+  const [problemRep, setProblemRep] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [completed, setCompleted] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     const isDark = localStorage.getItem("darkMode") === "true" || 
@@ -41,102 +38,106 @@ export default function CaseDetail() {
   }, []);
 
   useEffect(() => {
+    if (notFound) {
+      router.push('/dashboard');
+      return;
+    }
+  }, [notFound, router]);
+
+  useEffect(() => {
     if (!id) return;
     fetch(`/api/cases/${id}`)
-      .then(res => res.json())
+      .then(res => {
+        if (res.status === 401) {
+          router.push('/auth/signin');
+          return null;
+        }
+        if (res.status === 404) {
+          setNotFound(true);
+          return null;
+        }
+        return res.json();
+      })
       .then(data => {
-        if (data.case) {
+        if (data?.case) {
           setCaseData(data.case);
           setHints(data.hints || []);
         }
       })
+      .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, router, notFound]);
 
   const currentHint = hints[currentHintIndex];
-  const hasSubmittedForCurrentHint = diagnoses.some(d => d.hint === currentHintIndex + 1);
+  const isProblemRepPhase = currentHintIndex === hints.length && !completed;
+  const canAdvance = currentDiagnosis.trim().length > 0;
+  const canSubmit = isProblemRepPhase && problemRep.trim().length > 0;
 
-  const handleSubmitDiagnosis = async () => {
-    if (!currentDiagnosis.trim()) return;
+  const handleNextHint = () => {
+    if (!canAdvance) return;
+    setDiagnoses((prev) => ({ ...prev, [currentHintIndex + 1]: currentDiagnosis.trim() }));
+    setCurrentHintIndex((prev) => prev + 1);
+  };
+
+  const handlePrevHint = () => {
+    if (currentHintIndex > 0) {
+      setDiagnoses((prev) => ({ ...prev, [currentHintIndex + 1]: currentDiagnosis.trim() }));
+      const newIndex = currentHintIndex - 1;
+      setCurrentHintIndex(newIndex);
+      setCurrentDiagnosis(diagnoses[newIndex + 1] || currentDiagnosis);
+    }
+  };
+
+  const handleSubmitAll = async () => {
+    if (!canSubmit) return;
+
     setSubmitting(true);
     setSubmitError("");
 
+    const entries = Object.entries(diagnoses)
+      .filter(([, v]) => v.trim())
+      .map(([k, v]) => ({ hint: parseInt(k), diagnosis: v.trim() }));
+
+    if (entries.length === 0) {
+      setSubmitError("Submit at least one diagnosis");
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      const isLastHint = currentHintIndex === hints.length - 1;
       const res = await fetch(`/api/cases/${id}/submissions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          diagnosis: currentDiagnosis.trim(),
-          submitted_after_hint: currentHintIndex + 1,
-          is_final: isLastHint,
+          diagnoses: entries,
+          problemRep: problemRep.trim(),
         }),
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setSubmitError(data.error || "Failed to save diagnosis");
+        setSubmitError(data.details || data.error || "Failed to submit");
         return;
       }
 
-      setDiagnoses((prev) => {
-        const next = prev.filter((d) => d.hint !== currentHintIndex + 1);
-        next.push({ hint: currentHintIndex + 1, diagnosis: currentDiagnosis.trim() });
-        return next;
-      });
-
-      if (isLastHint) {
-        setCompleted(true);
-      } else {
-        setCurrentDiagnosis("");
-        setCurrentHintIndex((prev) => Math.min(prev + 1, hints.length - 1));
-      }
+      setCompleted(true);
     } catch (err) {
-      console.error(err);
-      setSubmitError("Failed to save diagnosis");
+      setSubmitError("Failed to submit");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleNextHint = () => {
-    if (hasSubmittedForCurrentHint && currentHintIndex < hints.length - 1) {
-      setCurrentHintIndex(currentHintIndex + 1);
-      // Check if we already have a diagnosis for this hint
-      const existing = diagnoses.find(d => d.hint === currentHintIndex + 1);
-      setCurrentDiagnosis(existing?.diagnosis || "");
-    }
-  };
-
-  const handlePrevHint = () => {
-    if (currentHintIndex > 0) {
-      setCurrentHintIndex(currentHintIndex - 1);
-      // Show existing diagnosis for this hint if any
-      const existing = diagnoses.find(d => d.hint === currentHintIndex + 1);
-      setCurrentDiagnosis(existing?.diagnosis || "");
-    }
-  };
-
-  const goToHint = (hintNum: number) => {
-    setCurrentHintIndex(hintNum - 1);
-    const existing = diagnoses.find(d => d.hint === hintNum);
-    setCurrentDiagnosis(existing?.diagnosis || "");
-  };
-
-  if (loading) {
+  if (loading || notFound) {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center">
-        <p className="text-zinc-600 dark:text-zinc-400">Loading case...</p>
+        <p className="text-zinc-600 dark:text-zinc-400">Loading...</p>
       </div>
     );
   }
 
   if (!caseData) {
-    return (
-      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center">
-        <p className="text-zinc-600 dark:text-zinc-400">Case not found</p>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -160,66 +161,102 @@ export default function CaseDetail() {
       <main className="max-w-3xl mx-auto py-8 px-6">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white mb-2">{caseData.title}</h1>
         
-        <div className="mb-6">
-          <span className="text-zinc-500 dark:text-zinc-400">
-            Hint {currentHintIndex + 1} of {hints.length}
-          </span>
-          <div className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full mt-2">
-            <div 
-              className="h-2 bg-zinc-900 dark:bg-white rounded-full transition-all"
-              style={{ width: `${((currentHintIndex + 1) / hints.length) * 100}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3">Hint {currentHintIndex + 1}</h2>
-          <div className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
-            <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{currentHint?.content}</p>
-            {currentHint?.image_url && (
-              <img 
-                src={`/api/image?url=${encodeURIComponent(currentHint.image_url)}`} 
-                alt="Case" 
-                className="mt-4 max-w-full rounded" 
+        {!isProblemRepPhase && !completed && (
+          <div className="mb-6">
+            <span className="text-zinc-500 dark:text-zinc-400">
+              Hint {currentHintIndex + 1} of {hints.length}
+            </span>
+            <div className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full mt-2">
+              <div 
+                className="h-2 bg-zinc-900 dark:bg-white rounded-full transition-all"
+                style={{ width: `${((currentHintIndex + 1) / hints.length) * 100}%` }}
               />
-            )}
-            {currentHint?.labs && (
-              <div className="mt-4 p-3 bg-zinc-50 dark:bg-zinc-800 rounded">
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 font-mono">{currentHint.labs}</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-            Your Diagnosis for Hint {currentHintIndex + 1}
-          </label>
-          <textarea
-            value={currentDiagnosis}
-            onChange={(e) => setCurrentDiagnosis(e.target.value)}
-            placeholder="Enter your diagnosis..."
-            rows={3}
-            disabled={hasSubmittedForCurrentHint}
-            className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg disabled:opacity-50 disabled:bg-zinc-100 disabled:dark:bg-zinc-800"
-          />
-        </div>
-
-        {hasSubmittedForCurrentHint && (
-          <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <p className="text-green-700 dark:text-green-400 font-medium">Diagnosis submitted for Hint {currentHintIndex + 1}</p>
+            </div>
           </div>
         )}
 
-        {!hasSubmittedForCurrentHint && (
+        {isProblemRepPhase && !completed && (
+          <div className="mb-6">
+            <span className="text-zinc-500 dark:text-zinc-400">Problem Representation</span>
+            <div className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full mt-2">
+              <div className="h-2 bg-blue-600 dark:bg-blue-400 rounded-full" style={{ width: '100%' }} />
+            </div>
+          </div>
+        )}
+
+        {!isProblemRepPhase && !completed && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3">Hint {currentHintIndex + 1}</h2>
+            <div className="p-4 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
+              <p className="text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{currentHint?.content}</p>
+              {currentHint?.image_url && (
+                <img src={`/api/image?url=${encodeURIComponent(currentHint.image_url)}`} alt="Case" className="mt-4 max-w-full rounded" />
+              )}
+              {currentHint?.labs && (
+                <div className="mt-4 p-3 bg-zinc-50 dark:bg-zinc-800 rounded">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 font-mono">{currentHint.labs}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isProblemRepPhase && !completed && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-3">Problem Representation</h2>
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                Synthesize your findings into a concise problem representation.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!completed && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+              {isProblemRepPhase ? "Your Problem Representation" : `Your Diagnosis`}
+            </label>
+            <textarea
+              value={isProblemRepPhase ? problemRep : currentDiagnosis}
+              onChange={(e) => {
+                if (isProblemRepPhase) setProblemRep(e.target.value);
+                else setCurrentDiagnosis(e.target.value);
+              }}
+              placeholder={isProblemRepPhase ? "e.g., A 55-year-old man with acute chest pain..." : "Enter your diagnosis..."}
+              rows={isProblemRepPhase ? 4 : 3}
+              className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg"
+            />
+          </div>
+        )}
+
+        {!completed && (
           <div className="flex gap-4 mb-8">
-            <button
-              onClick={handleSubmitDiagnosis}
-              disabled={!currentDiagnosis.trim() || submitting}
-              className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-medium disabled:opacity-50"
-            >
-              {submitting ? "Submitting..." : "Submit Diagnosis"}
-            </button>
+            {currentHintIndex > 0 && (
+              <button
+                onClick={handlePrevHint}
+                className="px-6 py-3 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                ← Previous
+              </button>
+            )}
+            {isProblemRepPhase ? (
+              <button
+                onClick={handleSubmitAll}
+                disabled={!canSubmit || submitting}
+                className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50"
+              >
+                {submitting ? "Submitting..." : "Submit Case"}
+              </button>
+            ) : (
+              <button
+                onClick={handleNextHint}
+                disabled={!canAdvance}
+                className="flex-1 px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-medium disabled:opacity-50"
+              >
+                {currentHintIndex === hints.length - 1 ? "Continue to PR →" : "Next Hint →"}
+              </button>
+            )}
           </div>
         )}
 
@@ -229,57 +266,10 @@ export default function CaseDetail() {
           </div>
         )}
 
-        {hasSubmittedForCurrentHint && currentHintIndex < hints.length - 1 && (
-          <div className="flex gap-4 mb-8">
-            <button
-              onClick={handleNextHint}
-              className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg font-medium"
-            >
-              Next Hint →
-            </button>
-          </div>
-        )}
-
-        {currentHintIndex > 0 && (
-          <button
-            onClick={handlePrevHint}
-            className="px-6 py-3 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 mb-8"
-          >
-            ← Previous Hint
-          </button>
-        )}
-
-        {diagnoses.length > 0 && (
-          <div className="mt-8 pt-8 border-t border-zinc-200 dark:border-zinc-700">
-            <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-4">Your Diagnoses</h2>
-            <div className="space-y-4">
-              {diagnoses.map((d) => (
-                <div 
-                  key={d.hint} 
-                  onClick={() => goToHint(d.hint)}
-                  className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                    d.hint === currentHintIndex + 1
-                      ? 'border-zinc-500 dark:border-zinc-400 bg-zinc-100 dark:bg-zinc-800'
-                      : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Hint {d.hint}</span>
-                    {d.hint === hints.length && (
-                      <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-400 rounded">Final</span>
-                    )}
-                  </div>
-                  <p className="text-zinc-900 dark:text-zinc-200">{d.diagnosis}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {completed && (
           <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-center">
             <p className="text-xl font-bold text-blue-700 dark:text-blue-400 mb-2">Case Complete!</p>
-            <p className="text-blue-600 dark:text-blue-500">Your final diagnosis has been submitted to your teacher.</p>
+            <p className="text-blue-600 dark:text-blue-500">Your diagnoses and problem representation have been submitted to your teacher.</p>
             <button
               onClick={() => router.push("/dashboard")}
               className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

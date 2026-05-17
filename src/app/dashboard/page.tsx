@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, ArrowRight, Pencil, Plus, Trash2, Search, X } from "lucide-react";
 
 interface User {
   id: string;
@@ -24,6 +24,9 @@ export default function Dashboard() {
   const [expandedCases, setExpandedCases] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ cases: any[]; submissions: any[]; comments: any[] } | null>(null);
+  const [searching, setSearching] = useState(false);
 
   const fetchTeacherSubmissions = () => {
     fetch("/api/submissions")
@@ -35,6 +38,27 @@ export default function Dashboard() {
       })
       .catch(() => {});
   };
+
+  useEffect(() => {
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setSearchResults(null);
+      return;
+    }
+
+    setSearching(true);
+    const timer = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.cases || data.submissions || data.comments) {
+            setSearchResults(data);
+          }
+        })
+        .finally(() => setSearching(false));
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     const isDark = localStorage.getItem("darkMode") === "true" ||
@@ -142,7 +166,14 @@ export default function Dashboard() {
   };
 
   const deleteComment = async (commentId: string, submissionId: string) => {
-    await fetch(`/api/teacher-comments?comment_id=${commentId}`, { method: 'DELETE' });
+    const res = await fetch(`/api/teacher-comments?comment_id=${commentId}`, {
+      method: 'DELETE',
+      headers: { 'x-delete-confirm': 'sdxlab-delete-2026' },
+    });
+    if (!res.ok) {
+      setCommentError((prev) => ({ ...prev, [submissionId]: 'Failed to delete comment' }));
+      return;
+    }
     loadComments(submissionId);
   };
 
@@ -155,13 +186,19 @@ export default function Dashboard() {
       submission_ids: submissionIds.join(','),
     });
     let deleted = false;
-    const batchRes = await fetch(`/api/submissions?${batchParams.toString()}`, { method: 'DELETE' });
+    const batchRes = await fetch(`/api/submissions?${batchParams.toString()}`, {
+      method: 'DELETE',
+      headers: { 'x-delete-confirm': 'sdxlab-delete-2026' },
+    });
     deleted = batchRes.ok;
 
     if (!deleted) {
       const perIdResults = await Promise.all(
         submissionIds.map((id) =>
-          fetch(`/api/submissions?submission_id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+          fetch(`/api/submissions?submission_id=${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: { 'x-delete-confirm': 'sdxlab-delete-2026' },
+          })
         )
       );
       deleted = perIdResults.every((res) => res.ok);
@@ -192,7 +229,12 @@ export default function Dashboard() {
   };
 
   const deleteCase = async (caseId: string) => {
-    await fetch(`/api/cases/${caseId}`, { method: "DELETE" });
+    if (!confirm("Delete this case and all its submissions? This cannot be undone.")) return;
+    const res = await fetch(`/api/cases/${caseId}`, {
+      method: "DELETE",
+      headers: { 'x-delete-confirm': 'sdxlab-delete-2026' },
+    });
+    if (!res.ok) return;
     setCases((prev) => prev.filter((c) => c.id !== caseId));
     setTeacherSubmissions((prev) => prev.filter((s) => s.case_id !== caseId));
   };
@@ -275,8 +317,114 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-5xl mx-auto py-8 px-6">
-        <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Available Cases</h2>
-        {isTeacher && (
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search cases, students, diagnoses, comments..."
+              className="w-full pl-10 pr-10 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {searchResults && (
+          <div className="mb-8 space-y-6">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+              Search Results
+              {searching && <span className="ml-2 text-sm font-normal text-zinc-500">Searching...</span>}
+            </h2>
+
+            {searchResults.cases.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">Cases ({searchResults.cases.length})</h3>
+                <div className="space-y-2">
+                  {searchResults.cases.map((c: any) => (
+                    <div
+                      key={c.id}
+                      onClick={() => router.push(`/dashboard/${c.id}`)}
+                      className="p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-600"
+                    >
+                      <p className="font-medium text-zinc-900 dark:text-white">{c.title}</p>
+                      <p className="text-xs text-zinc-500">{new Date(c.created_at).toLocaleDateString()}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {searchResults.submissions.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">Submissions ({searchResults.submissions.length})</h3>
+                <div className="space-y-2">
+                  {searchResults.submissions.map((s: any) => (
+                    <div
+                      key={s.id}
+                      onClick={() => router.push(`/dashboard/${s.case_id}`)}
+                      className="p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-600"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium text-zinc-900 dark:text-white">{s.student_email}</p>
+                        <span className="text-xs text-zinc-500">Hint {s.submitted_after_hint}</span>
+                      </div>
+                      <p className="text-sm text-zinc-700 dark:text-zinc-300 mt-1">{s.diagnosis}</p>
+                      <p className="text-xs text-zinc-500 mt-1">{s.case_title} · {new Date(s.created_at).toLocaleDateString()}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {searchResults.comments.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">Comments ({searchResults.comments.length})</h3>
+                <div className="space-y-2">
+                  {searchResults.comments.map((c: any) => (
+                    <div
+                      key={c.id}
+                      onClick={() => router.push(`/dashboard/${c.case_id}`)}
+                      className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 cursor-pointer hover:border-blue-400 dark:hover:border-blue-600"
+                    >
+                      <p className="text-sm text-zinc-700 dark:text-zinc-300">{c.comment}</p>
+                      <p className="text-xs text-zinc-500 mt-1">{c.teacher_id} · {c.student_email} · {c.case_title} · {new Date(c.created_at).toLocaleDateString()}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!searching && searchResults.cases.length === 0 && searchResults.submissions.length === 0 && searchResults.comments.length === 0 && (
+              <p className="text-zinc-500 dark:text-zinc-400">No results found for "{searchQuery}"</p>
+            )}
+          </div>
+        )}
+
+        {!searchResults && (
+          <>
+            <h2 className="text-2xl font-semibold text-zinc-900 dark:text-white mb-6">Available Cases</h2>
+            {isTeacher && (
+              <button
+                onClick={() => router.push('/teacher/create')}
+                className="w-full mb-6 p-6 bg-white dark:bg-zinc-900 rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-zinc-900 dark:hover:border-zinc-400 flex items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+              >
+                <Plus className="w-8 h-8" />
+                <span className="text-lg font-medium">Create New Case</span>
+              </button>
+            )}
+          </>
+        )}
+
+        {searchResults && isTeacher && (
           <button
             onClick={() => router.push('/teacher/create')}
             className="w-full mb-6 p-6 bg-white dark:bg-zinc-900 rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-700 hover:border-zinc-900 dark:hover:border-zinc-400 flex items-center justify-center gap-3 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
@@ -286,9 +434,11 @@ export default function Dashboard() {
           </button>
         )}
 
-        {cases.length === 0 ? (
+        {!searchResults && cases.length === 0 && (
           <p className="text-zinc-600 dark:text-zinc-400">No cases available yet.</p>
-        ) : (
+        )}
+
+        {!searchResults && cases.length > 0 && (
           <div className="grid gap-4">
             {cases.map((c) => {
                 const teacherGroups = isTeacher ? getCaseSubmissionGroups(c.id) : [];
@@ -330,7 +480,7 @@ export default function Dashboard() {
                         aria-label={`Preview ${c.title}`}
                         title="Student preview"
                       >
-                        <Eye className="w-7 h-7" />
+                        <ArrowRight className="w-7 h-7" />
                       </button>
                     </div>
                   </div>
@@ -421,8 +571,12 @@ export default function Dashboard() {
                                               .sort((a: any, b: any) => (a.submitted_after_hint || 0) - (b.submitted_after_hint || 0))
                                               .map((sub: any, idx: number) => (
                                                 <div key={sub.id || idx} className="flex items-start gap-1.5 text-sm p-1.5 rounded bg-zinc-50 dark:bg-zinc-900">
-                                                  <span className="px-1.5 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium min-w-[42px] text-center">
-                                                    {sub.submitted_after_hint || '?'}
+                                                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium min-w-[42px] text-center ${
+                                                    sub.submission_type === 'problem_representation'
+                                                      ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200'
+                                                      : 'bg-zinc-200 dark:bg-zinc-700'
+                                                  }`}>
+                                                    {sub.submission_type === 'problem_representation' ? 'PR' : (sub.submitted_after_hint || '?')}
                                                   </span>
                                                   <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis || 'No diagnosis'}</span>
                                                 </div>
@@ -497,8 +651,12 @@ export default function Dashboard() {
                                     .map((sub: any, idx: number) => (
                                       <div key={sub.id || idx} className="p-2 rounded bg-zinc-50 dark:bg-zinc-900">
                                         <div className="flex items-start gap-1.5 text-sm">
-                                          <span className="px-1.5 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-xs font-medium min-w-[42px] text-center">
-                                            {sub.submitted_after_hint || '?'}
+                                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium min-w-[42px] text-center ${
+                                            sub.submission_type === 'problem_representation'
+                                              ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200'
+                                              : 'bg-zinc-200 dark:bg-zinc-700'
+                                          }`}>
+                                            {sub.submission_type === 'problem_representation' ? 'PR' : (sub.submitted_after_hint || '?')}
                                           </span>
                                           <span className="text-zinc-700 dark:text-zinc-300">{sub.diagnosis || 'No diagnosis'}</span>
                                         </div>

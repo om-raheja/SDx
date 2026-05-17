@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 interface HintData {
   content: string;
@@ -19,6 +19,7 @@ export default function EditCaseHints() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState<Record<number, boolean>>({});
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -134,6 +135,26 @@ export default function EditCaseHints() {
     setSaving(false);
   };
 
+  const handleDelete = async () => {
+    if (!confirm("Delete this case and all its submissions? This cannot be undone.")) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/cases/${id}`, {
+        method: "DELETE",
+        headers: { 'x-delete-confirm': 'sdxlab-delete-2026' },
+      });
+      if (res.ok) {
+        router.push("/dashboard");
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to delete case");
+      }
+    } catch {
+      setError("Failed to delete case");
+    }
+    setDeleting(false);
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">Loading...</div>;
   }
@@ -142,12 +163,21 @@ export default function EditCaseHints() {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
         <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">Edit Case Hints</h1>
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 dark:text-white rounded-lg"
-        >
-          Back
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium disabled:opacity-50"
+          >
+            {deleting ? "Deleting..." : "Delete Case"}
+          </button>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 dark:text-white rounded-lg"
+          >
+            Back
+          </button>
+        </div>
       </header>
 
       <main className="max-w-3xl mx-auto py-8 px-6 space-y-6">

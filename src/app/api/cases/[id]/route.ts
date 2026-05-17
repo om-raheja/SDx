@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
+import { checkDeleteConfirmation } from '@/lib/delete-guard';
+
+// GUARDRAIL: This endpoint ONLY deletes a single case by ID.
+// NEVER modify this to delete all cases or all submissions.
+// NEVER remove the WHERE clause. NEVER add a bulk delete endpoint.
+// REQUIRES: x-delete-confirm header with valid token.
 
 const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
 
@@ -21,7 +27,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       [id]
     );
     
-    // Get submissions for this case
     const submissionsResult = await pool.query(`
       SELECT s.*, COALESCE(u.name, 'Unknown') as student_name, COALESCE(u.email, s.email, 'Unknown') as student_email
       FROM submissions s
@@ -42,6 +47,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const confirm = checkDeleteConfirmation(request);
+  if (confirm) return confirm;
+
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -52,17 +60,27 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     const { id } = await params;
     
-    // Delete teacher comments attached to this case's submissions
-    await pool.query(
-      'DELETE FROM teacher_comments WHERE submission_id IN (SELECT id FROM submissions WHERE case_id = $1)',
-      [id]
-    );
-    // Delete hints first
-    await pool.query('DELETE FROM hints WHERE case_id = $1', [id]);
-    // Delete submissions
-    await pool.query('DELETE FROM submissions WHERE case_id = $1', [id]);
-    // Delete case
-    await pool.query('DELETE FROM cases WHERE id = $1', [id]);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      const subIds = await client.query('SELECT id FROM submissions WHERE case_id = $1', [id]);
+      if (subIds.rows.length > 0) {
+        const ids = subIds.rows.map(r => r.id);
+        await client.query('DELETE FROM teacher_comments WHERE submission_id::text = ANY($1::text[])', [ids]);
+      }
+      
+      await client.query('DELETE FROM submissions WHERE case_id = $1', [id]);
+      await client.query('DELETE FROM hints WHERE case_id = $1', [id]);
+      await client.query('DELETE FROM cases WHERE id = $1', [id]);
+      
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

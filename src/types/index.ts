@@ -25,9 +25,11 @@ export interface Hint {
 export interface Submission {
   id: string;
   user_id: string;
+  email?: string;
   case_id: string;
   diagnosis: string;
   submitted_after_hint: number;
   created_at: Date;
   is_final: boolean;
+  submission_group_id?: string;
 }

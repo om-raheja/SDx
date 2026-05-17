@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { del, put } from '@vercel/blob';
 import { randomUUID } from 'crypto';
+import { checkDeleteConfirmation } from '@/lib/delete-guard';
 
 export async function POST(request: Request) {
   try {
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     const pathname = `hints/${Date.now()}-${randomUUID()}${extension}`;
 
     const blob = await put(pathname, file, {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
       contentType: file.type || 'application/octet-stream',
       token,
@@ -43,6 +44,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const confirm = checkDeleteConfirmation(request);
+  if (confirm) return confirm;
+
   try {
     const token = process.env.BLOB_READ_WRITE_TOKEN;
     if (!token) {

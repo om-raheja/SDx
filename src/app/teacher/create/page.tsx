@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 interface HintData {
   content: string;
   imageUrl: string;
+  labs: string;
 }
 
 export default function CreateCase() {
@@ -13,7 +14,7 @@ export default function CreateCase() {
   const [title, setTitle] = useState("");
   const [hintCount, setHintCount] = useState(7);
   const [hints, setHints] = useState<HintData[]>(
-    Array(7).fill(null).map(() => ({ content: "", imageUrl: "" }))
+    Array(7).fill(null).map(() => ({ content: "", imageUrl: "", labs: "" }))
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -24,6 +25,7 @@ export default function CreateCase() {
     const newHints = Array(hintCount).fill(null).map((_, i) => ({
       content: hints[i]?.content || "",
       imageUrl: hints[i]?.imageUrl || "",
+      labs: hints[i]?.labs || "",
     }));
     setHints(newHints);
   }, [hintCount]);
@@ -109,12 +111,13 @@ export default function CreateCase() {
             hint_order: i + 1,
             content: h.content,
             imageUrl: h.imageUrl,
+            labs: h.labs,
           })),
         }),
       });
 
       if (res.ok) {
-        router.push('/teacher');
+        router.push('/dashboard');
       } else {
         const data = await res.json();
         setError(data.error || 'Failed to create case');
@@ -195,6 +198,17 @@ export default function CreateCase() {
                 placeholder="Enter hint content..."
                 rows={3}
                 className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg mb-2"
+              />
+              <input
+                type="text"
+                value={hint.labs}
+                onChange={(e) => {
+                  const newHints = [...hints];
+                  newHints[index].labs = e.target.value;
+                  setHints(newHints);
+                }}
+                placeholder="Lab values (optional)..."
+                className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg mb-2 font-mono text-sm"
               />
               <input
                 type="file"

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
+import { checkDeleteConfirmation } from '@/lib/delete-guard';
 
 const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('Comment error:', err);
-    return NextResponse.json({ error: 'Failed to add comment: ' + String(err) }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to add comment' }, { status: 500 });
   }
 }
 
@@ -73,6 +74,9 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const confirm = checkDeleteConfirmation(request);
+  if (confirm) return confirm;
+
   try {
     await ensureTables();
     const session = await getSession();

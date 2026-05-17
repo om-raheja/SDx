@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     const userData = {
       id: user.id,
       email: user.email,
-      name: user.firstName + ' ' + user.lastName,
+      name: `${(user.firstName || '').trim()} ${(user.lastName || '').trim()}`.trim() || user.email,
     };
 
     const response = NextResponse.json({ success: true, user: userData });

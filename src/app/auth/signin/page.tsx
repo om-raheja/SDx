@@ -11,7 +11,9 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [mode, setMode] = useState<"signin"|"signup">("signin");
   const [showReset, setShowReset] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     const isDark = localStorage.getItem("darkMode") === "true" || 
@@ -107,7 +109,7 @@ export default function SignInPage() {
   if (magicLinkSent) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 dark:bg-zinc-950 min-h-screen">
-        <button onClick={toggleDarkMode} className="absolute top-4 right-4 p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800">🌙</button>
+        <button onClick={toggleDarkMode} className="absolute top-4 right-4 p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800">{darkMode ? "☀️" : "🌙"}</button>
         <main className="flex flex-col items-center gap-6 py-12 px-8 max-w-md w-full text-center">
           <h1 className="text-2xl font-bold text-green-600">Check your email</h1>
           <p className="text-zinc-600 dark:text-zinc-400">We sent a magic link to {email}. Click it to sign in.</p>
@@ -122,7 +124,7 @@ export default function SignInPage() {
   if (showReset && resetSent) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 dark:bg-zinc-950 min-h-screen">
-        <button onClick={toggleDarkMode} className="absolute top-4 right-4 p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800">🌙</button>
+        <button onClick={toggleDarkMode} className="absolute top-4 right-4 p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800">{darkMode ? "☀️" : "🌙"}</button>
         <main className="flex flex-col items-center gap-6 py-12 px-8 max-w-md w-full text-center">
           <h1 className="text-2xl font-bold text-green-600">Check your email</h1>
           <p className="text-zinc-600 dark:text-zinc-400">We sent a password reset link to your email.</p>
@@ -137,7 +139,7 @@ export default function SignInPage() {
   if (showReset) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 dark:bg-zinc-950 min-h-screen">
-        <button onClick={toggleDarkMode} className="absolute top-4 right-4 p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800">🌙</button>
+        <button onClick={toggleDarkMode} className="absolute top-4 right-4 p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800">{darkMode ? "☀️" : "🌙"}</button>
         <main className="flex flex-col items-center gap-6 py-12 px-8 max-w-md w-full">
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Reset Password</h1>
           <p className="text-zinc-600 dark:text-zinc-400">Enter your email to receive a reset link.</p>
@@ -160,7 +162,7 @@ export default function SignInPage() {
 
   return (
     <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 dark:bg-zinc-950 min-h-screen transition-colors">
-      <button onClick={toggleDarkMode} className="absolute top-4 right-4 p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-lg">🌙</button>
+      <button onClick={toggleDarkMode} className="absolute top-4 right-4 p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800 text-lg">{darkMode ? "☀️" : "🌙"}</button>
 
       <main className="flex flex-col items-center gap-6 py-12 px-8 max-w-md w-full">
         <div className="text-center">

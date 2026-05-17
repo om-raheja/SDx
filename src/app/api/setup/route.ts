@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/session';
 import pool from '@/lib/db';
+
+// GUARDRAIL: This endpoint only creates tables if they don't exist.
+// It NEVER drops, truncates, or deletes any data from cases or submissions.
+// NEVER add DROP TABLE, TRUNCATE, or DELETE statements to this file.
+
+const TEACHER_EMAILS = ['soniasethi66@hotmail.com', 'buttabomma67@outlook.com'];
 
 export async function POST() {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!TEACHER_EMAILS.includes(session.email)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(255) PRIMARY KEY,
@@ -43,6 +55,7 @@ export async function POST() {
         submitted_after_hint INT,
         is_final BOOLEAN DEFAULT FALSE,
         submission_group_id VARCHAR(255),
+        submission_type VARCHAR(50) DEFAULT 'diagnosis',
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
