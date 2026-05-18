@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, ArrowRight, Pencil, Plus, Trash2, Search, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ArrowRight, Pencil, Plus, Trash2, Search, X, FileDown } from "lucide-react";
+import { exportCaseToPdf } from "@/lib/export-pdf";
 
 interface User {
   id: string;
@@ -237,6 +238,39 @@ export default function Dashboard() {
     if (!res.ok) return;
     setCases((prev) => prev.filter((c) => c.id !== caseId));
     setTeacherSubmissions((prev) => prev.filter((s) => s.case_id !== caseId));
+  };
+
+  const handleExportPdf = async (caseId: string, studentEmail: string, submissions: any[]) => {
+    try {
+      const [caseRes, subsRes] = await Promise.all([
+        fetch(`/api/cases/${caseId}`),
+        fetch(`/api/submissions`),
+      ]);
+
+      if (!caseRes.ok) return;
+
+      const caseData = await caseRes.json();
+      const hints = caseData.hints || [];
+
+      const studentSubs = submissions.map((s: any) => ({
+        id: s.id,
+        diagnosis: s.diagnosis,
+        submitted_after_hint: s.submitted_after_hint,
+        created_at: s.created_at,
+        submission_type: s.submission_type,
+      }));
+
+      const caseComments = comments[submissions[0]?.id] || [];
+      const teacherComments = caseComments.map((c: any) => ({
+        comment: c.comment,
+        teacher_name: c.teacher_name,
+        created_at: c.created_at,
+      }));
+
+      exportCaseToPdf(caseData.case?.title || 'Unknown Case', studentEmail, hints, studentSubs, teacherComments);
+    } catch {
+      console.error('Failed to export PDF');
+    }
   };
 
   if (loading || !user) {
@@ -517,19 +551,29 @@ export default function Dashboard() {
                               <div key={`${g.submission_group_id || g.submissions[0]?.id || `${g.email}-${g.case_id}`}`} className="px-6 py-3 border-b last:border-b-0 border-zinc-200 dark:border-zinc-700">
                                 <div className="flex justify-between items-start mb-2">
                                   <h3 className="font-medium text-zinc-900 dark:text-white">{g.email}</h3>
-                                  <button
-                                    onClick={() =>
-                                      deleteStudentSubmissions(
-                                        g.case_id,
-                                        g.submissions.map((s: any) => s.id),
-                                      )
-                                    }
-                                    className="text-red-500 hover:text-red-600"
-                                    title="Delete student submissions"
-                                    aria-label="Delete student submissions"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => handleExportPdf(g.case_id, g.email, g.submissions)}
+                                      className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                                      title="Export to PDF"
+                                      aria-label="Export to PDF"
+                                    >
+                                      <FileDown className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        deleteStudentSubmissions(
+                                          g.case_id,
+                                          g.submissions.map((s: any) => s.id),
+                                        )
+                                      }
+                                      className="text-red-500 hover:text-red-600"
+                                      title="Delete student submissions"
+                                      aria-label="Delete student submissions"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
                                 </div>
 
                                 <div className="space-y-2 mb-3">
