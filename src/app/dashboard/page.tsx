@@ -240,13 +240,13 @@ export default function Dashboard() {
     setTeacherSubmissions((prev) => prev.filter((s) => s.case_id !== caseId));
   };
 
-  const handleExportPdf = async (caseId: string, studentEmail: string, submissions: any[]) => {
-    try {
-      const [caseRes, subsRes] = await Promise.all([
-        fetch(`/api/cases/${caseId}`),
-        fetch(`/api/submissions`),
-      ]);
+  const [exporting, setExporting] = useState<Record<string, boolean>>({});
 
+  const handleExportPdf = async (caseId: string, studentEmail: string, submissions: any[]) => {
+    const key = `${caseId}-${studentEmail}`;
+    setExporting((prev) => ({ ...prev, [key]: true }));
+    try {
+      const caseRes = await fetch(`/api/cases/${caseId}`);
       if (!caseRes.ok) return;
 
       const caseData = await caseRes.json();
@@ -267,9 +267,11 @@ export default function Dashboard() {
         created_at: c.created_at,
       }));
 
-      exportCaseToPdf(caseData.case?.title || 'Unknown Case', studentEmail, hints, studentSubs, teacherComments);
+      await exportCaseToPdf(caseData.case?.title || 'Unknown Case', studentEmail, hints, studentSubs, teacherComments);
     } catch {
       console.error('Failed to export PDF');
+    } finally {
+      setExporting((prev) => ({ ...prev, [key]: false }));
     }
   };
 
@@ -554,11 +556,16 @@ export default function Dashboard() {
                                   <div className="flex items-center gap-2">
                                     <button
                                       onClick={() => handleExportPdf(g.case_id, g.email, g.submissions)}
-                                      className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                                      disabled={exporting[`${g.case_id}-${g.email}`]}
+                                      className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 disabled:opacity-50"
                                       title="Export to PDF"
                                       aria-label="Export to PDF"
                                     >
-                                      <FileDown className="w-4 h-4" />
+                                      {exporting[`${g.case_id}-${g.email}`] ? (
+                                        <span className="text-xs">Exporting...</span>
+                                      ) : (
+                                        <FileDown className="w-4 h-4" />
+                                      )}
                                     </button>
                                     <button
                                       onClick={() =>

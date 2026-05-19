@@ -23,7 +23,26 @@ interface TeacherComment {
   created_at: string;
 }
 
-export function exportCaseToPdf(
+async function fetchImageAsBase64(imageUrl: string): Promise<{ data: string; type: string } | null> {
+  try {
+    const res = await fetch(`/api/image?url=${encodeURIComponent(imageUrl)}`);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const reader = new FileReader();
+    return new Promise((resolve) => {
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        const type = blob.type || 'image/png';
+        resolve({ data: result, type });
+      };
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function exportCaseToPdf(
   caseTitle: string,
   studentEmail: string,
   hints: Hint[],
@@ -34,6 +53,15 @@ export function exportCaseToPdf(
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
   let y = 20;
+
+  // Fetch all images first
+  const imageCache: Record<string, { data: string; type: string }> = {};
+  for (const hint of hints) {
+    if (hint.image_url) {
+      const img = await fetchImageAsBase64(hint.image_url);
+      if (img) imageCache[hint.image_url] = img;
+    }
+  }
 
   // Header
   doc.setFillColor(39, 39, 42);
@@ -91,8 +119,29 @@ export function exportCaseToPdf(
     doc.text(hintLines, margin + 3, y);
     y += hintLines.length * 5 + 4;
 
+    // Image if present
+    const imgData = hint.image_url ? imageCache[hint.image_url] : null;
+    if (imgData) {
+      if (y > 220) {
+        doc.addPage();
+        y = 20;
+      }
+      try {
+        const imgWidth = pageWidth - margin * 2;
+        const imgHeight = 40;
+        doc.addImage(imgData.data, imgData.type.split('/')[1] || 'PNG', margin, y, imgWidth, imgHeight);
+        y += imgHeight + 4;
+      } catch {
+        // Skip if image fails to embed
+      }
+    }
+
     // Labs if present
     if (hint.labs) {
+      if (y > 250) {
+        doc.addPage();
+        y = 20;
+      }
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(100, 100, 100);
       doc.text('Labs:', margin + 3, y);
@@ -105,6 +154,10 @@ export function exportCaseToPdf(
     }
 
     // Diagnosis
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
     doc.setFillColor(239, 246, 255);
     doc.roundedRect(margin + 3, y - 4, pageWidth - margin * 2 - 6, 8, 2, 2, 'F');
     doc.setFont('helvetica', 'bold');
