@@ -56,6 +56,7 @@ export async function POST() {
         is_final BOOLEAN DEFAULT FALSE,
         submission_group_id VARCHAR(255),
         submission_type VARCHAR(50) DEFAULT 'diagnosis',
+        diagnosis_rank INT,
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);

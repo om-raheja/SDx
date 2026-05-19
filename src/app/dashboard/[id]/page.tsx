@@ -2,6 +2,7 @@
 
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ArrowUp, ArrowDown, X, Plus } from "lucide-react";
 
 interface Hint {
   id: string;
@@ -11,6 +12,8 @@ interface Hint {
   labs?: string;
 }
 
+const MAX_DIAGNOSES = 7;
+
 export default function CaseDetail() {
   const router = useRouter();
   const params = useParams();
@@ -18,8 +21,7 @@ export default function CaseDetail() {
   const [caseData, setCaseData] = useState<any>(null);
   const [hints, setHints] = useState<Hint[]>([]);
   const [currentHintIndex, setCurrentHintIndex] = useState(0);
-  const [diagnoses, setDiagnoses] = useState<Record<number, string>>({});
-  const [currentDiagnosis, setCurrentDiagnosis] = useState("");
+  const [diagnosisLists, setDiagnosisLists] = useState<Record<number, string[]>>({});
   const [problemRep, setProblemRep] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -70,21 +72,50 @@ export default function CaseDetail() {
 
   const currentHint = hints[currentHintIndex];
   const isProblemRepPhase = currentHintIndex === hints.length && !completed;
-  const canAdvance = currentDiagnosis.trim().length > 0;
+  const currentList = diagnosisLists[currentHintIndex + 1] || [];
+  const canAdvance = currentList.length > 0 && currentList[0]?.trim();
   const canSubmit = isProblemRepPhase && problemRep.trim().length > 0;
+
+  const updateDiagnosisList = (list: string[]) => {
+    setDiagnosisLists((prev) => ({ ...prev, [currentHintIndex + 1]: list }));
+  };
+
+  const addDiagnosis = () => {
+    if (currentList.length >= MAX_DIAGNOSES) return;
+    updateDiagnosisList([...currentList, ""]);
+  };
+
+  const updateDiagnosis = (index: number, value: string) => {
+    const newList = [...currentList];
+    newList[index] = value;
+    updateDiagnosisList(newList);
+  };
+
+  const removeDiagnosis = (index: number) => {
+    updateDiagnosisList(currentList.filter((_, i) => i !== index));
+  };
+
+  const moveDiagnosis = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= currentList.length) return;
+    const newList = [...currentList];
+    [newList[index], newList[newIndex]] = [newList[newIndex], newList[index]];
+    updateDiagnosisList(newList);
+  };
 
   const handleNextHint = () => {
     if (!canAdvance) return;
-    setDiagnoses((prev) => ({ ...prev, [currentHintIndex + 1]: currentDiagnosis.trim() }));
+    const trimmed = currentList.map(d => d.trim()).filter(Boolean);
+    updateDiagnosisList(trimmed);
     setCurrentHintIndex((prev) => prev + 1);
   };
 
   const handlePrevHint = () => {
     if (currentHintIndex > 0) {
-      setDiagnoses((prev) => ({ ...prev, [currentHintIndex + 1]: currentDiagnosis.trim() }));
+      const trimmed = currentList.map(d => d.trim()).filter(Boolean);
+      updateDiagnosisList(trimmed);
       const newIndex = currentHintIndex - 1;
       setCurrentHintIndex(newIndex);
-      setCurrentDiagnosis(diagnoses[newIndex + 1] || currentDiagnosis);
     }
   };
 
@@ -94,11 +125,16 @@ export default function CaseDetail() {
     setSubmitting(true);
     setSubmitError("");
 
-    const entries = Object.entries(diagnoses)
-      .filter(([, v]) => v.trim())
-      .map(([k, v]) => ({ hint: parseInt(k), diagnosis: v.trim() }));
+    const entries: Record<number, string[]> = {};
+    for (const [hintStr, list] of Object.entries(diagnosisLists)) {
+      const hintNum = parseInt(hintStr);
+      const trimmed = list.map(d => d.trim()).filter(Boolean);
+      if (trimmed.length > 0) {
+        entries[hintNum] = trimmed;
+      }
+    }
 
-    if (entries.length === 0) {
+    if (Object.keys(entries).length === 0) {
       setSubmitError("Submit at least one diagnosis");
       setSubmitting(false);
       return;
@@ -121,7 +157,7 @@ export default function CaseDetail() {
       }
 
       setCompleted(true);
-    } catch (err) {
+    } catch {
       setSubmitError("Failed to submit");
     } finally {
       setSubmitting(false);
@@ -215,18 +251,66 @@ export default function CaseDetail() {
         {!completed && (
           <div className="mb-6">
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-              {isProblemRepPhase ? "Your Problem Representation" : `Your Diagnosis`}
+              {isProblemRepPhase ? "Your Problem Representation" : "Differential Diagnosis"}
             </label>
-            <textarea
-              value={isProblemRepPhase ? problemRep : currentDiagnosis}
-              onChange={(e) => {
-                if (isProblemRepPhase) setProblemRep(e.target.value);
-                else setCurrentDiagnosis(e.target.value);
-              }}
-              placeholder={isProblemRepPhase ? "e.g., A 55-year-old man with acute chest pain..." : "Enter your diagnosis..."}
-              rows={isProblemRepPhase ? 4 : 3}
-              className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg"
-            />
+            {!isProblemRepPhase && (
+              <div className="space-y-2">
+                {currentList.map((diag, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 w-6 text-center shrink-0">
+                      {index + 1}
+                    </span>
+                    <input
+                      type="text"
+                      value={diag}
+                      onChange={(e) => updateDiagnosis(index, e.target.value)}
+                      placeholder={`Diagnosis #${index + 1}`}
+                      className="flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg text-sm"
+                    />
+                    <div className="flex flex-col gap-0.5 shrink-0">
+                      <button
+                        onClick={() => moveDiagnosis(index, 'up')}
+                        disabled={index === 0}
+                        className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 disabled:opacity-30"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => moveDiagnosis(index, 'down')}
+                        disabled={index === currentList.length - 1}
+                        className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 disabled:opacity-30"
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => removeDiagnosis(index)}
+                      className="p-1 text-zinc-400 hover:text-red-500 shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {currentList.length < MAX_DIAGNOSES && (
+                  <button
+                    onClick={addDiagnosis}
+                    className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add diagnosis
+                  </button>
+                )}
+              </div>
+            )}
+            {isProblemRepPhase && (
+              <textarea
+                value={problemRep}
+                onChange={(e) => setProblemRep(e.target.value)}
+                placeholder="e.g., A 55-year-old man with acute chest pain..."
+                rows={4}
+                className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-lg"
+              />
+            )}
           </div>
         )}
 
@@ -269,7 +353,7 @@ export default function CaseDetail() {
         {completed && (
           <div className="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-center">
             <p className="text-xl font-bold text-blue-700 dark:text-blue-400 mb-2">Case Complete!</p>
-            <p className="text-blue-600 dark:text-blue-500">Your diagnoses and problem representation have been submitted to your teacher.</p>
+            <p className="text-blue-600 dark:text-blue-500">Your differential diagnoses and problem representation have been submitted to your teacher.</p>
             <button
               onClick={() => router.push("/dashboard")}
               className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

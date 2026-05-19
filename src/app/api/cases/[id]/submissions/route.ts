@@ -21,24 +21,33 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const email = session.email;
     const userId = session.id || null;
 
-    if (body.diagnoses && Array.isArray(body.diagnoses)) {
+    if (body.diagnoses && typeof body.diagnoses === 'object' && !Array.isArray(body.diagnoses)) {
       const submissionGroupId = await getSubmissionGroupForNewSubmission(caseId, userId, email);
 
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
 
-        for (const d of body.diagnoses) {
-          await client.query(
-            'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final, email, submission_group_id, submission_type) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9)',
-            [uuidv4(), userId, caseId, d.diagnosis, d.hint, false, email, submissionGroupId, 'diagnosis']
-          );
+        for (const [hintStr, diagList] of Object.entries(body.diagnoses)) {
+          const hintOrder = parseInt(hintStr);
+          if (Array.isArray(diagList)) {
+            for (let rank = 0; rank < diagList.length; rank++) {
+              const diag = (diagList as string[])[rank];
+              if (diag.trim()) {
+                await client.query(
+                  'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final, email, submission_group_id, submission_type, diagnosis_rank) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, $10)',
+                  [uuidv4(), userId, caseId, diag.trim(), hintOrder, false, email, submissionGroupId, 'diagnosis', rank + 1]
+                );
+              }
+            }
+          }
         }
 
         if (body.problemRep) {
+          const hintCount = Object.keys(body.diagnoses).length;
           await client.query(
-            'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final, email, submission_group_id, submission_type) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9)',
-            [uuidv4(), userId, caseId, body.problemRep, body.diagnoses.length, true, email, submissionGroupId, 'problem_representation']
+            'INSERT INTO submissions (id, user_id, case_id, diagnosis, submitted_after_hint, created_at, is_final, email, submission_group_id, submission_type, diagnosis_rank) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9, $10)',
+            [uuidv4(), userId, caseId, body.problemRep, hintCount, true, email, submissionGroupId, 'problem_representation', null]
           );
         }
 

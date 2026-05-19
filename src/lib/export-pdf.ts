@@ -14,6 +14,7 @@ interface Submission {
   submitted_after_hint: number;
   created_at: string;
   submission_type?: string;
+  diagnosis_rank?: number;
   student_email?: string;
 }
 
@@ -54,12 +55,26 @@ export async function exportCaseToPdf(
   const margin = 20;
   let y = 20;
 
-  // Fetch all images first
   const imageCache: Record<string, { data: string; type: string }> = {};
   for (const hint of hints) {
     if (hint.image_url) {
       const img = await fetchImageAsBase64(hint.image_url);
       if (img) imageCache[hint.image_url] = img;
+    }
+  }
+
+  const sortedSubs = [...submissions].sort((a, b) => {
+    if (a.submitted_after_hint !== b.submitted_after_hint) return a.submitted_after_hint - b.submitted_after_hint;
+    return (a.diagnosis_rank || 999) - (b.diagnosis_rank || 999);
+  });
+
+  const diagnosesByHint: Record<number, string[]> = {};
+  for (const sub of sortedSubs) {
+    if (sub.submission_type !== 'problem_representation') {
+      const hintOrder = sub.submitted_after_hint;
+      if (!diagnosesByHint[hintOrder]) diagnosesByHint[hintOrder] = [];
+      const rank = sub.diagnosis_rank ? sub.diagnosis_rank - 1 : diagnosesByHint[hintOrder].length;
+      diagnosesByHint[hintOrder][rank] = sub.diagnosis;
     }
   }
 
@@ -77,7 +92,6 @@ export async function exportCaseToPdf(
 
   y = 55;
 
-  // Case info
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text(caseTitle, margin, y);
@@ -92,17 +106,11 @@ export async function exportCaseToPdf(
   y += 12;
   doc.setTextColor(0, 0, 0);
 
-  // Hints and Diagnoses
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Hints & Diagnoses', margin, y);
-  y += 8;
-
-  const sortedSubs = [...submissions].sort((a, b) => a.submitted_after_hint - b.submitted_after_hint);
-
   for (const hint of hints) {
-    const sub = sortedSubs.find(s => s.submitted_after_hint === hint.hint_order);
-    const diagnosis = sub?.diagnosis || '(No diagnosis submitted)';
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
 
     // Hint header
     doc.setFillColor(244, 244, 245);
@@ -119,7 +127,7 @@ export async function exportCaseToPdf(
     doc.text(hintLines, margin + 3, y);
     y += hintLines.length * 5 + 4;
 
-    // Image if present
+    // Image
     const imgData = hint.image_url ? imageCache[hint.image_url] : null;
     if (imgData) {
       if (y > 220) {
@@ -128,15 +136,12 @@ export async function exportCaseToPdf(
       }
       try {
         const imgWidth = pageWidth - margin * 2;
-        const imgHeight = 40;
-        doc.addImage(imgData.data, imgData.type.split('/')[1] || 'PNG', margin, y, imgWidth, imgHeight);
-        y += imgHeight + 4;
-      } catch {
-        // Skip if image fails to embed
-      }
+        doc.addImage(imgData.data, imgData.type.split('/')[1] || 'PNG', margin, y, imgWidth, 40);
+        y += 44;
+      } catch {}
     }
 
-    // Labs if present
+    // Labs
     if (hint.labs) {
       if (y > 250) {
         doc.addPage();
@@ -153,28 +158,37 @@ export async function exportCaseToPdf(
       doc.setTextColor(0, 0, 0);
     }
 
-    // Diagnosis
-    if (y > 250) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.setFillColor(239, 246, 255);
-    doc.roundedRect(margin + 3, y - 4, pageWidth - margin * 2 - 6, 8, 2, 2, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(37, 99, 235);
-    doc.text('Diagnosis:', margin + 6, y + 1);
-    y += 6;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(0, 0, 0);
-    const diagLines = doc.splitTextToSize(diagnosis, pageWidth - margin * 2 - 12);
-    doc.text(diagLines, margin + 6, y);
-    y += diagLines.length * 5 + 8;
+    // Differential diagnoses
+    const hintDiags = diagnosesByHint[hint.hint_order] || [];
+    if (hintDiags.length > 0) {
+      if (y > 250) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.setFillColor(239, 246, 255);
+      doc.roundedRect(margin + 3, y - 4, pageWidth - margin * 2 - 6, 8, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(37, 99, 235);
+      doc.text('Differential Diagnosis:', margin + 6, y + 1);
+      y += 8;
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
 
-    // Page break check
-    if (y > 260) {
-      doc.addPage();
-      y = 20;
+      for (let i = 0; i < hintDiags.length; i++) {
+        if (hintDiags[i]) {
+          const label = `#${i + 1} ${hintDiags[i]}`;
+          const diagLines = doc.splitTextToSize(label, pageWidth - margin * 2 - 12);
+          doc.text(diagLines, margin + 9, y);
+          y += diagLines.length * 4 + 2;
+        }
+        if (y > 260) {
+          doc.addPage();
+          y = 20;
+        }
+      }
+      y += 4;
     }
   }
 
